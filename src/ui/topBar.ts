@@ -11,7 +11,7 @@ interface SpeedButton {
 export function mountTopBar(
   root: HTMLElement,
   host: GameHost,
-  actions: { note: () => void; inbox: () => void; settings: () => void },
+  actions: { note: () => void; inbox: () => void; settings: () => void; build: () => void },
 ): void {
   const bar = document.createElement('div');
   bar.className = 'topbar';
@@ -23,6 +23,7 @@ export function mountTopBar(
       <span class="chip chip--paused" data-role="paused" hidden>Paused</span>
     </div>
     <div class="topbar__right" role="group" aria-label="Time controls">
+      <button type="button" class="btn" data-action="build" title="Build mode (B)">Build</button>
       <button type="button" class="btn" data-action="note" title="Leave a note (F)">Note</button>
       <button type="button" class="btn" data-action="inbox" title="Inbox (I)">Inbox<span class="badge" data-role="badge" hidden>0</span></button>
       <button type="button" class="btn" data-action="settings" title="Settings and saves">Settings</button>
@@ -44,7 +45,7 @@ export function mountTopBar(
   }));
 
   const badge = q('badge');
-  for (const name of ['note', 'inbox', 'settings'] as const) {
+  for (const name of ['build', 'note', 'inbox', 'settings'] as const) {
     bar.querySelector<HTMLButtonElement>(`button[data-action="${name}"]`)?.addEventListener('click', (e) => {
       (e.currentTarget as HTMLButtonElement).blur();
       actions[name]();

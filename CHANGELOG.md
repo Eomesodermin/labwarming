@@ -1,5 +1,29 @@
 # Changelog
 
+## Milestone 4: Build mode, rooms and upgrades
+
+- Build mode (B or the Build button): pauses the game (kept paused even if Resume is pressed), zooms the map out to sit left of a side panel with Rooms, Equipment and Decor tabs, draws the tile grid, keep-clear marks on every door and the tile inside it, and room names.
+- Buying plots: click a plot for sale, pick a room type. Costs and Reputation unlocks come from `content/rooms.ts`. The door opens, the floor takes the room's colour and a free spray station is placed beside the door. The Media Facility is listed but locked (needs Reputation 30, then says it opens in a later update).
+- Placement (`sim/placement.ts`, rules from 3.2): inside an owned room that allows the item, free tiles, door and inside-door tile clear, someone standing there blocks, the front must have a free floor tile reachable from the door. The ghost is green or red with a one-line reason. Left click places, R or right click rotates, clicking a piece selects it for Move (free), Upgrade, Repair (fridge) or Sell.
+- Commands: `BuyPlot`, `PlaceEquipment`, `MoveEquipment`, `SellEquipment`, `UpgradeEquipment`. All bump `gridVersion` when walkability changes and stop a player walk that would cross the new layout. Sell refunds 50 percent of everything paid including upgrades, and refuses if cultures, a running autoclave, stored stock or waste would be lost.
+- All of 4.2 works: tier stats for every piece, upgrade prices and Reputation gates, desk writing speed (and Office plus 25 percent), autoclave (Run autoclave job 6 s, unattended cycle 40 s or 30 s, 8 or 16 flasks, flasks wait inside if the shelf is full), coffee machine (Coffee break job, then 10 percent faster work for 60 s), sofa and plant as decor.
+- "No path" warning: equipment with no reachable front tile gets a pulsing red mark and a line in the panel (`pathWarnings`).
+- Save schema is now 2. Migration 1 to 2 adds `equipment.cycle` (null) and `stats.autoclaveCycles` and `stats.plotsBought`. M3 saves load.
+- Tests: `tests/sim/build.test.ts` and migration tests in `tests/sim/save.test.ts`.
+
+### Deviations
+
+- Esc drops a held item first, then a second Esc leaves build mode. B leaves at once.
+- New items stay in hand after placing, so several can be placed in a row. Moving drops the piece after one placement.
+- Sell asks for a second click to confirm.
+- The autoclave never breaks in M4. The 5 percent breakdown, coaxing and the engineer arrive with the failure events in M6.
+- Coffee break has no Energy or Mood yet (M5). The player only gets the speed boost. Tier 2 Mood and sofa and plant Mood are stored in content for M5.
+- The media prep unit is not in the catalogue (the facility function is out of scope).
+- Placement does not forbid cutting off another piece, so the warning can fire. Only the new piece's own front and the door must stay reachable.
+- A second Lab costs 600. Room type cannot be changed after buying.
+- Build mode zooms the camera to 0.75, so world text labels look soft there.
+- Starting equipment (not the bay or spray) can be sold, for half its price.
+
 ## Milestone 3: Money, orders, papers, saving and feedback
 
 - Funds (start 500) and Reputation. Core funding of 100 arrives at the end of each day (18:00). The end-of-day card pauses the game until the player clicks Next day. Salaries join the card in milestone 5.

@@ -50,6 +50,7 @@ export class StatusRenderer {
       else if (eq.defId === 'bin') this.drawBinGauge(state, eq);
       else if (eq.defId === 'fridge' && eq.broken) this.drawWarning(eq, nowMs);
       else if (eq.defId === 'bay') this.drawBoxes(state, eq);
+      else if (eq.defId === 'autoclave' && eq.cycle) this.drawCycle(eq, eq.cycle.ticksLeft);
     }
     const player = state.agents[PLAYER_ID];
     for (const job of Object.values(state.jobs)) {
@@ -114,6 +115,18 @@ export class StatusRenderer {
       g.fillStyle(PALETTE.moss, 1).fillRect(x, y, size, size);
       g.fillStyle(PALETTE.sage, 1).fillRect(x - 1, y + 1, 1, 2).fillRect(x + size, y + 1, 1, 2).fillRect(x + 1, y - 2, 2, 1);
     }
+  }
+
+  /** The autoclave's cycle: a bar that fills while it runs unattended. A full gold bar means it waits for shelf room. */
+  private drawCycle(eq: Equipment, ticksLeft: number): void {
+    const total = Math.max(1, tierStat('autoclave', 'cycleSec', eq.tier) * TICKS_PER_SECOND);
+    const w = 26;
+    const h = 4;
+    const { x, y } = gaugeOrigin(eq, w, h);
+    const frac = Math.min(1, Math.max(0, 1 - ticksLeft / total));
+    this.g.fillStyle(PALETTE.plum, 1).fillRect(x - 1, y - 1, w + 2, h + 2);
+    this.g.fillStyle(PALETTE.cream, 1).fillRect(x, y, w, h);
+    this.g.fillStyle(ticksLeft <= 0 ? PALETTE.mustard : PALETTE.teal, 1).fillRect(x, y, Math.max(1, Math.round(frac * w)), h);
   }
 
   private drawBinGauge(state: GameState, eq: Equipment): void {

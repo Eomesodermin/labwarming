@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { DELIVERY_BAY, MAP_H, MAP_W, PLOTS, TILE_SIZE, WASTE_POINT } from '../../content/map';
+import { ROOMS } from '../../content/rooms';
 import { baseTile } from '../../sim/grid';
 import type { GameState } from '../../sim/types';
 import { PALETTE, PALETTE_HEX } from '../art/palette';
@@ -18,7 +19,7 @@ export class TileRenderer {
 
   sync(state: GameState): void {
     const key = Object.values(state.plots)
-      .map((p) => `${p.id}${p.owned ? 1 : 0}`)
+      .map((p) => `${p.id}${p.owned ? 1 : 0}${p.roomType ?? ''}`)
       .join('');
     if (key === this.ownedKey) return;
     this.ownedKey = key;
@@ -53,7 +54,7 @@ export class TileRenderer {
             g.fillRect(px, py, T, T);
             break;
           case 'floor':
-            g.fillStyle(owned ? PALETTE.cream : PALETTE.stone);
+            g.fillStyle(owned ? this.floorColour(state, t.plotId) : PALETTE.stone);
             g.fillRect(px, py, T, T);
             if (owned) {
               g.lineStyle(1, PALETTE.butter, 0.5);
@@ -123,6 +124,11 @@ export class TileRenderer {
     // Delivery bay and waste point markers.
     this.marker(DELIVERY_BAY.x, DELIVERY_BAY.y, PALETTE.mustard, 'IN');
     this.marker(WASTE_POINT.x, WASTE_POINT.y, PALETTE.berry, 'OUT');
+  }
+
+  private floorColour(state: GameState, plotId: string | null): number {
+    const type = plotId ? state.plots[plotId]?.roomType : null;
+    return PALETTE[type ? ROOMS[type].floor : 'cream'];
   }
 
   private marker(x: number, y: number, colour: number, label: string): void {

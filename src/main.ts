@@ -3,6 +3,7 @@ import { startAutosave } from './platform/autosave';
 import { trackRecentEvents } from './platform/eventLog';
 import { createGame } from './view/game';
 import { mountEndOfDay } from './ui/endOfDay';
+import { mountBuildPanel } from './ui/buildPanel';
 import { openFeedbackBox } from './ui/feedbackBox';
 import { openInbox } from './ui/inbox';
 import { mountUiRoot } from './ui/root';
@@ -25,22 +26,35 @@ void showTitleScreen().then((state) => {
   const host = createHost(state);
   const game = createGame(gameParent, host);
   const recent = trackRecentEvents(host);
-  const openNote = (): void => openFeedbackBox(uiRoot, host, recent);
-  const openMail = (): void => openInbox(uiRoot, host);
-  const openSet = (): void => openSettings(uiRoot, host);
+  // Opening a panel on top of build mode ends build mode first.
+  const openNote = (): void => {
+    host.ui.setBuild(false);
+    openFeedbackBox(uiRoot, host, recent);
+  };
+  const openMail = (): void => {
+    host.ui.setBuild(false);
+    openInbox(uiRoot, host);
+  };
+  const openSet = (): void => {
+    host.ui.setBuild(false);
+    openSettings(uiRoot, host);
+  };
+  const toggleBuild = (): void => host.ui.setBuild(!host.ui.build.active);
 
   mountUiRoot(uiRoot, game);
-  mountTopBar(uiRoot, host, { note: openNote, inbox: openMail, settings: openSet });
+  mountTopBar(uiRoot, host, { note: openNote, inbox: openMail, settings: openSet, build: toggleBuild });
   mountStockStrip(uiRoot, host);
   mountTodoNote(uiRoot, host);
   mountStationPrompt(uiRoot, host);
   mountStationMenu(uiRoot, host);
   mountToasts(uiRoot, host);
+  mountBuildPanel(uiRoot, host);
   mountEndOfDay(uiRoot, host);
   mountStorageBanner(uiRoot);
   host.ui.panelKey = (code) => {
     if (code === 'KeyF') openNote();
     else if (code === 'KeyI') openMail();
+    else if (code === 'KeyB') toggleBuild();
     else return false;
     return true;
   };

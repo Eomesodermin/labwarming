@@ -20,6 +20,10 @@ const equipmentColours: Record<string, { fill: PaletteName; text: PaletteName }>
   spray: { fill: 'sage', text: 'plum' },
   desk: { fill: 'warmWood', text: 'plum' },
   bay: { fill: 'butter', text: 'plum' },
+  autoclave: { fill: 'slate', text: 'paper' },
+  coffee: { fill: 'terracotta', text: 'paper' },
+  sofa: { fill: 'dustyRose', text: 'plum' },
+  plant: { fill: 'sage', text: 'plum' },
 };
 
 export const SPRITES: Record<string, SpriteSource> = {};
