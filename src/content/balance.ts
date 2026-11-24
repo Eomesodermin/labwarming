@@ -17,3 +17,9 @@ export const STAFF_MOVE_SPEED = 30;
 export const SCHEMA_VERSION = 1;
 
 export const DEFAULT_PLAYER_NAME = 'Postdoc';
+
+/** Autosave every this many real seconds (also at the end of each day, when the tab is hidden and after purchases). */
+export const AUTOSAVE_SEC = 60;
+
+/** If this is set, the feedback tab shows an Email notes button. Empty by default. */
+export const FEEDBACK_EMAIL = '';

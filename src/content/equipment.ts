@@ -54,6 +54,8 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
   bin: { id: 'bin', name: 'Waste bin', label: 'BIN', w: 1, h: 1, stats: { capacity: [8, 16] } },
   spray: { id: 'spray', name: 'Spray station', label: 'SPR', w: 1, h: 1 },
   desk: { id: 'desk', name: 'Desk', label: 'DESK', w: 2, h: 1 },
+  // The delivery bay in the corridor. Boxes wait here until someone puts them away.
+  bay: { id: 'bay', name: 'Delivery bay', label: 'BAY', w: 1, h: 1 },
 };
 
 /** A tier-dependent number for a piece of equipment. Returns `fallback` if the stat does not exist. */

@@ -1,4 +1,5 @@
 import type { EquipmentDefId } from '../sim/types';
+import { GRANT_WRITE_SEC, PAPER, PRESENTATION } from './economy';
 
 export type JobId =
   | 'splitCells'
@@ -7,7 +8,12 @@ export type JobId =
   | 'washFlask'
   | 'takeOutWaste'
   | 'tidyUp'
-  | 'binCulture';
+  | 'binCulture'
+  | 'putAwayOrder'
+  | 'writePaper'
+  | 'revisePaper'
+  | 'makePresentation'
+  | 'writeGrant';
 
 export interface JobDef {
   id: JobId;
@@ -37,6 +43,17 @@ export const JOBS: Record<JobId, JobDef> = {
   takeOutWaste: { id: 'takeOutWaste', name: 'Take out waste', station: 'bin', seconds: 4, dirties: true },
   tidyUp: { id: 'tidyUp', name: 'Tidy up', station: 'spray', seconds: 8, dirties: false },
   binCulture: { id: 'binCulture', name: 'Bin a culture', station: 'incubator', seconds: 3, dirties: true },
+  putAwayOrder: { id: 'putAwayOrder', name: 'Put away order', station: 'bay', seconds: 6, dirties: false },
+  writePaper: { id: 'writePaper', name: 'Write paper', station: 'desk', seconds: PAPER.writeSec, dirties: false },
+  revisePaper: { id: 'revisePaper', name: 'Revise paper', station: 'desk', seconds: PAPER.reviseSec, dirties: false },
+  makePresentation: {
+    id: 'makePresentation',
+    name: 'Make presentation',
+    station: 'desk',
+    seconds: PRESENTATION.sec,
+    dirties: false,
+  },
+  writeGrant: { id: 'writeGrant', name: 'Write grant', station: 'desk', seconds: GRANT_WRITE_SEC, dirties: false },
 };
 
 export function jobsForStation(defId: EquipmentDefId): JobDef[] {

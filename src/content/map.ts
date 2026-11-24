@@ -79,4 +79,6 @@ export const START_EQUIPMENT: readonly StartingEquipment[] = [
   { defId: 'bin', x: 3, y: 7, rot: 2, tier: 1 },
   { defId: 'spray', x: 6, y: 7, rot: 2, tier: 1 },
   { defId: 'desk', x: 8, y: 7, rot: 2, tier: 1 },
+  // The delivery bay sits in the corridor at the bay marker and faces right.
+  { defId: 'bay', x: 2, y: 9, rot: 3, tier: 1 },
 ];

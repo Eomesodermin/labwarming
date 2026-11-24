@@ -23,6 +23,7 @@ describe('content', () => {
     expect(plot).toBeDefined();
     const seen = new Set<string>();
     for (const eq of Object.values(s.equipment)) {
+      if (eq.defId === 'bay') continue; // the delivery bay stands in the corridor
       const w = eq.rot % 2 === 1 ? EQUIPMENT[eq.defId]?.h ?? 1 : EQUIPMENT[eq.defId]?.w ?? 1;
       const h = eq.rot % 2 === 1 ? EQUIPMENT[eq.defId]?.w ?? 1 : EQUIPMENT[eq.defId]?.h ?? 1;
       for (let dy = 0; dy < h; dy++) {
@@ -56,5 +57,43 @@ describe('hand-job content', () => {
   it('has to-do steps that name real stats', async () => {
     const { TODO_STEPS } = await import('../../src/content/tutorial');
     expect(TODO_STEPS).toHaveLength(6);
+  });
+});
+
+describe('economy content', () => {
+  it('has non-negative integer prices and real stock items for every order', async () => {
+    const { ORDERS } = await import('../../src/content/orders');
+    const { START_STOCK } = await import('../../src/content/items');
+    for (const o of Object.values(ORDERS)) {
+      expect(Number.isInteger(o.price) && o.price >= 0, o.id).toBe(true);
+      expect(o.qty).toBeGreaterThan(0);
+      expect(Object.keys(START_STOCK)).toContain(o.item);
+    }
+  });
+
+  it('has grants with integer pay and a decision time, and every email row has text', async () => {
+    const { GRANTS } = await import('../../src/content/economy');
+    const { EVENT_ROWS, FRIDGE_WARM } = await import('../../src/content/events');
+    for (const g of GRANTS) {
+      expect(Number.isInteger(g.pays) && g.pays >= 0, g.id).toBe(true);
+      expect(g.decisionSec).toBeGreaterThan(0);
+      expect(EVENT_ROWS[`grant_award_${g.id}`], g.id).toBeDefined();
+    }
+    for (const r of Object.values(EVENT_ROWS)) expect(r.body.length, r.id).toBeGreaterThan(10);
+    expect(FRIDGE_WARM.text.length).toBeGreaterThan(10);
+  });
+
+  it('uses no em dashes in player-facing text', async () => {
+    const { EVENT_ROWS, FRIDGE_WARM } = await import('../../src/content/events');
+    const rev = await import('../../src/content/reviewer');
+    const all = [
+      ...Object.values(EVENT_ROWS).flatMap((r) => [r.subject, r.body]),
+      FRIDGE_WARM.text,
+      rev.REVIEWER_FIRST_ACCEPT,
+      rev.REVIEWER_FIRST_REVISION,
+      rev.REVIEWER_AFTER_REVISION,
+      ...rev.REVIEWER_RANDOM,
+    ];
+    for (const t of all) expect(t).not.toMatch(/—/);
   });
 });

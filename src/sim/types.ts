@@ -98,7 +98,54 @@ export interface Job {
   sweetHit: boolean;
 }
 
+export type PaperStatus = 'review' | 'revise' | 'accepted';
+
+export interface Paper {
+  id: string;
+  /** 1 for the first paper of the save, and so on. Decides the scripted Reviewer 2 outcomes. */
+  number: number;
+  status: PaperStatus;
+  /** Ticks left in review. Only counts down while status is 'review'. */
+  reviewTicksLeft: number;
+}
+
+export interface GrantProgress {
+  status: 'applied' | 'awarded';
+  /** Ticks left until the decision. */
+  decisionTicksLeft: number;
+}
+
+/** An order on its way. */
+export interface Order {
+  id: string;
+  orderId: string;
+  ticksLeft: number;
+}
+
+/** A delivered box waiting at the delivery bay. `qty` shrinks if only part of it fits. */
+export interface Box {
+  id: string;
+  orderId: string;
+  qty: number;
+}
+
+export interface Email {
+  id: string;
+  /** The event row it came from, such as pi_welcome or paper_accepted. */
+  kind: string;
+  from: string;
+  subject: string;
+  body: string;
+  day: number;
+  tickOfDay: number;
+  read: boolean;
+}
+
 export interface Stats {
+  ordersPlaced: number;
+  papersWritten: number;
+  presentations: number;
+  boxesPutAway: number;
   splits: number;
   culturesGrown: number;
   experiments: number;
@@ -118,8 +165,16 @@ export interface GameState {
   tick: number;
   clock: Clock;
   playerName: string;
-  /** Data from experiments. Spent on papers from milestone 3. */
+  funds: number;
+  /** Data from experiments. Spent on papers, presentations and revisions. */
   data: number;
+  reputation: number;
+  papers: Paper[];
+  presentations: number;
+  grants: Record<string, GrantProgress>;
+  orders: Order[];
+  boxes: Box[];
+  inbox: Email[];
   stock: Stock;
   plots: Record<string, Plot>;
   equipment: Record<string, Equipment>;

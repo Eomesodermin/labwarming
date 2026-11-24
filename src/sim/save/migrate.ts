@@ -1,0 +1,41 @@
+import { SCHEMA_VERSION } from '../../content/balance';
+
+export class SaveError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SaveError';
+  }
+}
+
+type Raw = Record<string, unknown>;
+
+export interface Migration {
+  /** The schema version this step upgrades from. It produces `from + 1`. */
+  from: number;
+  run: (state: Raw) => Raw;
+}
+
+/**
+ * One function per schema step (1 to 2, 2 to 3, ...), in order. Every change to `GameState`
+ * after milestone 3 must bump `SCHEMA_VERSION` and add a step here, with a test.
+ */
+export const MIGRATIONS: readonly Migration[] = [];
+
+/** Runs every step from the save's version to the target version. The input is not changed. */
+export function migrate(
+  state: Raw,
+  fromVersion: number,
+  migrations: readonly Migration[] = MIGRATIONS,
+  target: number = SCHEMA_VERSION,
+): Raw {
+  if (!Number.isInteger(fromVersion) || fromVersion < 1) throw new SaveError('The save has no valid version number');
+  if (fromVersion > target) throw new SaveError('This save is from a newer version of the game');
+  let current: Raw = (JSON.parse(JSON.stringify(state)) as Raw);
+  for (let v = fromVersion; v < target; v++) {
+    const step = migrations.find((m) => m.from === v);
+    if (!step) throw new SaveError(`No way to upgrade a version ${v} save`);
+    current = step.run(current);
+    current['schemaVersion'] = v + 1;
+  }
+  return current;
+}

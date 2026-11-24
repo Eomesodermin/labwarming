@@ -1,7 +1,9 @@
 import { DEFAULT_PLAYER_NAME, SCHEMA_VERSION } from '../content/balance';
+import { STARTING_FUNDS, STARTING_REPUTATION } from '../content/economy';
 import { START_STOCK } from '../content/items';
 import { PLAYER_START, PLOTS, START_EQUIPMENT, START_PLOT } from '../content/map';
 import { PLAYER_ID } from './commands';
+import { sendEmailRow } from './email';
 import { seedToState } from './rng';
 import type { Equipment, GameState, Plot } from './types';
 
@@ -19,13 +21,21 @@ export function createInitialState(seed: number): GameState {
     tick: 0,
     clock: { day: 1, tickOfDay: 0, speed: 1, resumeSpeed: 1 },
     playerName: DEFAULT_PLAYER_NAME,
+    funds: STARTING_FUNDS,
     data: 0,
+    reputation: STARTING_REPUTATION,
+    papers: [],
+    presentations: 0,
+    grants: {},
+    orders: [],
+    boxes: [],
+    inbox: [],
     stock: { ...START_STOCK },
     plots,
     equipment: {},
     jobs: {},
     cultures: [],
-    stats: { splits: 0, culturesGrown: 0, experiments: 0, washes: 0, mediaMade: 0, wasteTaken: 0, tidies: 0, binned: 0, sweetHits: 0 },
+    stats: { ordersPlaced: 0, papersWritten: 0, presentations: 0, boxesPutAway: 0, splits: 0, culturesGrown: 0, experiments: 0, washes: 0, mediaMade: 0, wasteTaken: 0, tidies: 0, binned: 0, sweetHits: 0 },
     agents: {
       [PLAYER_ID]: {
         id: PLAYER_ID,
@@ -50,5 +60,6 @@ export function createInitialState(seed: number): GameState {
     const eq: Equipment = { id, defId: e.defId, tier: e.tier, x: e.x, y: e.y, rot: e.rot, broken: e.broken === true };
     state.equipment[id] = eq;
   }
+  sendEmailRow(state, 'pi_welcome');
   return state;
 }

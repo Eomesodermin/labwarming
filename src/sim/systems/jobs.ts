@@ -1,23 +1,31 @@
-import { TICKS_PER_SECOND } from '../../content/balance';
 import { tierStat } from '../../content/equipment';
+import { PAPER, PRESENTATION } from '../../content/economy';
+import { ITEM_NAMES } from '../../content/items';
 import { JOBS, TUNING, jobsForStation, type JobDef } from '../../content/jobs';
+import { ORDERS, isKnownOrder } from '../../content/orders';
 import { ROT_FACING, equipmentAt, DIR_VECTORS, frontTiles, opposite } from '../grid';
 import { nextFloat } from '../rng';
 import type { SimEvent } from '../simEvents';
-import { addStock, binFull, coldFree, dryFree, plotOf } from '../stock';
+import { secondsToTicks } from '../ticks';
+import { addStock, binFull, coldFree, dryFree, freeSpaceFor, plotOf, storageFullReason } from '../stock';
 import type { Agent, Culture, Equipment, GameState, Job } from '../types';
 import { cleanRoom, dirtyRoom } from './cleanliness';
 import { incubatorWithFreeSlot } from './cultures';
+import { applyForGrant, grantBlocker, openGrant } from './grants';
+import { acceptRevision, submitPaper } from './papers';
 
 const PLAYER = 'player';
 
-export function secondsToTicks(s: number): number {
-  return Math.max(1, Math.round(s * TICKS_PER_SECOND));
-}
+export { secondsToTicks };
 
 /** Seconds a job takes for the player at this station and tier. */
 export function jobSeconds(def: JobDef, eq: Equipment): number {
   return def.secondsStat ? tierStat(def.station, def.secondsStat, eq.tier, def.seconds) : def.seconds;
+}
+
+/** Stations where E opens a menu instead of starting a job: the desk, and a broken fridge (repair). */
+export function stationHasMenu(eq: Equipment): boolean {
+  return eq.defId === 'desk' || (eq.defId === 'fridge' && eq.broken);
 }
 
 /** True when the agent stands on a front tile of the station, still, and looks at it. */
@@ -66,7 +74,30 @@ export function jobBlocker(state: GameState, def: JobDef, eq: Equipment): string
       if (!state.cultures.some((c) => c.incubatorId === eq.id && c.status === 'contaminated')) return 'No contaminated culture here';
       if (!plotId || binFull(state, plotId)) return 'The waste bin is full. Take it out first';
       return null;
+    case 'putAwayOrder': {
+      const first = state.boxes[0];
+      if (!first) return 'No boxes waiting';
+      if (state.boxes.some((b) => boxFits(state, b.orderId))) return null;
+      const item = isKnownOrder(first.orderId) ? ORDERS[first.orderId].item : 'assayKits';
+      return storageFullReason(state, item);
+    }
+    case 'writePaper':
+      if (state.data < PAPER.data) return `Needs ${PAPER.data} Data`;
+      return null;
+    case 'revisePaper':
+      if (!state.papers.some((p) => p.status === 'revise')) return 'No paper needs revising';
+      if (state.data < PAPER.reviseData) return `Needs ${PAPER.reviseData} Data`;
+      return null;
+    case 'makePresentation':
+      if (state.data < PRESENTATION.data) return `Needs ${PRESENTATION.data} Data`;
+      return null;
+    case 'writeGrant':
+      return grantBlocker(state);
   }
+}
+
+function boxFits(state: GameState, orderId: string): boolean {
+  return isKnownOrder(orderId) && freeSpaceFor(state, ORDERS[orderId].item) >= 1;
 }
 
 function findJob(state: GameState, workerId: string, stationId: string, defId: string): Job | undefined {
@@ -205,6 +236,41 @@ function complete(state: GameState, job: Job, def: JobDef, eq: Equipment, events
       state.stats.binned += 1;
       break;
     }
+    case 'putAwayOrder': {
+      const box = state.boxes.find((b) => boxFits(state, b.orderId)) as (typeof state.boxes)[number];
+      const od = ORDERS[box.orderId as keyof typeof ORDERS];
+      const added = addStock(state, od.item, box.qty);
+      box.qty -= added;
+      if (box.qty <= 0) state.boxes = state.boxes.filter((b) => b !== box);
+      state.stats.boxesPutAway += 1;
+      const left = box.qty > 0 ? `, ${box.qty} still waiting` : '';
+      toast(events, `Put away ${added} ${ITEM_NAMES[od.item].toLowerCase()}${left}`);
+      break;
+    }
+    case 'writePaper': {
+      state.data -= PAPER.data;
+      const paper = submitPaper(state);
+      toast(events, `Paper ${paper.number} sent to review`);
+      break;
+    }
+    case 'revisePaper': {
+      state.data -= PAPER.reviseData;
+      const paper = state.papers.find((p) => p.status === 'revise') as (typeof state.papers)[number];
+      acceptRevision(state, paper, events);
+      break;
+    }
+    case 'makePresentation':
+      state.data -= PRESENTATION.data;
+      state.reputation += PRESENTATION.reputation;
+      state.stats.presentations += 1;
+      state.presentations += 1;
+      toast(events, `Presentation done! +${PRESENTATION.reputation} Reputation`);
+      break;
+    case 'writeGrant': {
+      const grant = openGrant(state);
+      if (grant) applyForGrant(state, grant, events);
+      break;
+    }
   }
   if (def.dirties) dirtyRoom(state, plotId);
 }
@@ -221,7 +287,11 @@ export function jobsSystem(state: GameState, events: SimEvent[]): void {
   if (player.pendingStation && player.path.length === 0 && player.arriveFacing === null) {
     const eq = state.equipment[player.pendingStation];
     player.pendingStation = null;
-    if (eq && atStation(player, eq)) startJob(state, eq, undefined, events);
+    if (eq && atStation(player, eq)) {
+      // A station with a menu opens it on arrival. Others start their first available job.
+      if (stationHasMenu(eq)) events.push({ type: 'StationReached', stationId: eq.id });
+      else startJob(state, eq, undefined, events);
+    }
   }
 
   const job = player.jobId ? state.jobs[player.jobId] : undefined;

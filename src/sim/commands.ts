@@ -1,3 +1,6 @@
+import { FRIDGE_REPAIR_COST } from '../content/economy';
+import { ORDERS, isKnownOrder } from '../content/orders';
+import { deliveryTicks } from './systems/orders';
 import { atStation, facedStation, pressSweetSpot, startJob } from './systems/jobs';
 import { findPathToAny, findPath } from './pathfinding';
 import { DIR_VECTORS, ROT_FACING, equipmentAt, frontTiles, isWalkable, opposite } from './grid';
@@ -12,7 +15,10 @@ export type Command =
   | { type: 'SweetSpotPress' }
   | { type: 'CancelJob' }
   | { type: 'SetSpeed'; speed: Speed }
-  | { type: 'TogglePause' };
+  | { type: 'TogglePause' }
+  | { type: 'PlaceOrder'; orderId: string }
+  | { type: 'RepairEquipment'; equipmentId: string }
+  | { type: 'MarkEmailRead'; emailId: string };
 
 export const PLAYER_ID = 'player';
 
@@ -107,6 +113,27 @@ function sweetSpotPress(state: GameState, events: SimEvent[]): void {
   if (player && job && eq && atStation(player, eq)) pressSweetSpot(state, job, events);
 }
 
+function placeOrder(state: GameState, orderId: string, events: SimEvent[]): void {
+  if (!isKnownOrder(orderId)) return reject(events, 'Unknown order');
+  const def = ORDERS[orderId];
+  if (state.funds < def.price) return reject(events, `Needs ${def.price} Funds`);
+  state.funds -= def.price;
+  state.orders.push({ id: `o${state.nextId++}`, orderId, ticksLeft: deliveryTicks() });
+  state.stats.ordersPlaced += 1;
+  events.push({ type: 'Purchase', what: def.name });
+  events.push({ type: 'Toast', text: `Ordered: ${def.name}. It arrives in 30 s` });
+}
+
+function repairEquipment(state: GameState, equipmentId: string, events: SimEvent[]): void {
+  const eq = state.equipment[equipmentId];
+  if (!eq || !eq.broken) return reject(events, 'Nothing to repair');
+  if (state.funds < FRIDGE_REPAIR_COST) return reject(events, `Needs ${FRIDGE_REPAIR_COST} Funds`);
+  state.funds -= FRIDGE_REPAIR_COST;
+  eq.broken = false;
+  events.push({ type: 'Purchase', what: 'Repair' });
+  events.push({ type: 'Toast', text: 'Fridge repaired. It hums happily' });
+}
+
 export function applyCommand(state: GameState, cmd: Command, events: SimEvent[]): void {
   switch (cmd.type) {
     case 'MovePlayer':
@@ -127,6 +154,15 @@ export function applyCommand(state: GameState, cmd: Command, events: SimEvent[])
     }
     case 'SetSpeed':
       return setSpeed(state, cmd.speed, events);
+    case 'PlaceOrder':
+      return placeOrder(state, cmd.orderId, events);
+    case 'RepairEquipment':
+      return repairEquipment(state, cmd.equipmentId, events);
+    case 'MarkEmailRead': {
+      const mail = state.inbox.find((m) => m.id === cmd.emailId);
+      if (mail) mail.read = true;
+      return;
+    }
     case 'TogglePause':
       return setSpeed(state, state.clock.speed === 0 ? state.clock.resumeSpeed : 0, events);
   }

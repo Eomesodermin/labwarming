@@ -58,7 +58,7 @@ describe('step', () => {
   it('starts with the Lab furnished and the player inside', () => {
     const s = createInitialState(1);
     expect(Object.values(s.equipment).map((e) => e.defId).sort()).toEqual(
-      ['bench', 'bin', 'desk', 'fridge', 'hood', 'incubator', 'shelf', 'sink', 'spray'].sort(),
+      ['bay', 'bench', 'bin', 'desk', 'fridge', 'hood', 'incubator', 'shelf', 'sink', 'spray'].sort(),
     );
     expect(s.plots['a']?.owned).toBe(true);
     expect(s.plots['b']?.owned).toBe(false);

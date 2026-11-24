@@ -64,3 +64,12 @@ export function wasteCapacity(state: GameState, plotId: string): number {
 export function binFull(state: GameState, plotId: string): boolean {
   return (state.plots[plotId]?.waste ?? 0) >= wasteCapacity(state, plotId);
 }
+
+/** Why an item cannot be put away right now. */
+export function storageFullReason(state: GameState, item: StockItem): string {
+  if (COLD_ITEMS.includes(item)) {
+    const broken = Object.values(state.equipment).some((e) => e.defId === 'fridge' && e.broken);
+    return broken ? 'The fridge is full. It is broken and holds less. Repair it at the fridge' : 'The fridge is full. Use some stock first';
+  }
+  return 'The shelf is full. Use some stock first';
+}
