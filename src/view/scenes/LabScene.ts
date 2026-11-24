@@ -5,6 +5,7 @@ import type { GameHost } from '../../host';
 import { PLAYER_ID, type Command } from '../../sim/commands';
 import { EQUIPMENT } from '../../content/equipment';
 import { equipmentAt, inBounds, isWalkable } from '../../sim/grid';
+import { spendBlocker } from '../../sim/funds';
 import { placementBlocker } from '../../sim/placement';
 import { plotOf } from '../../sim/stock';
 import { facedMenu, stationPrompt } from '../../sim/selectors';
@@ -196,7 +197,7 @@ export class LabScene extends Phaser.Scene {
     const reason = placementBlocker(state, b.held.defId, b.hover.x, b.hover.y, b.held.rot, b.held.moveId ? { ignoreId: b.held.moveId } : {});
     const price = def?.price ?? 0;
     if (reason) b.hint = reason;
-    else if (!b.held.moveId && state.funds < price) b.hint = `Needs ${price} Funds`;
+    else if (!b.held.moveId) b.hint = spendBlocker(state, price);
     else b.hint = null;
     b.valid = b.hint === null;
   }

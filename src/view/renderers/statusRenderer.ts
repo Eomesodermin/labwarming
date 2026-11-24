@@ -3,7 +3,6 @@ import { TICKS_PER_SECOND } from '../../content/balance';
 import { tierStat } from '../../content/equipment';
 import { TILE_SIZE } from '../../content/map';
 import { footprintSize } from '../../sim/grid';
-import { PLAYER_ID } from '../../sim/commands';
 import { slotsOf } from '../../sim/systems/cultures';
 import { wasteCapacity, plotOf } from '../../sim/stock';
 import type { Culture, Equipment, GameState, Job } from '../../sim/types';
@@ -52,11 +51,11 @@ export class StatusRenderer {
       else if (eq.defId === 'bay') this.drawBoxes(state, eq);
       else if (eq.defId === 'autoclave' && eq.cycle) this.drawCycle(eq, eq.cycle.ticksLeft);
     }
-    const player = state.agents[PLAYER_ID];
     for (const job of Object.values(state.jobs)) {
       const eq = state.equipment[job.stationId];
       if (!eq || job.progressTicks <= 0) continue;
-      this.drawJobBar(eq, job, player?.jobId === job.id);
+      const worker = state.agents[job.workerId];
+      this.drawJobBar(eq, job, worker?.jobId === job.id);
     }
   }
 
@@ -69,7 +68,7 @@ export class StatusRenderer {
     // The green zone for the sweet-spot bonus.
     const zs = Math.round((job.sweetStart / job.totalTicks) * BAR_W);
     const ze = Math.round((job.sweetEnd / job.totalTicks) * BAR_W);
-    g.fillStyle(PALETTE.sage, alpha).fillRect(x + zs, y, Math.max(1, ze - zs), BAR_H);
+    if (job.sweetEnd > job.sweetStart) g.fillStyle(PALETTE.sage, alpha).fillRect(x + zs, y, Math.max(1, ze - zs), BAR_H);
     const fill = Math.round((job.progressTicks / job.totalTicks) * BAR_W);
     g.fillStyle(active ? PALETTE.terracotta : PALETTE.slate, alpha).fillRect(x, y + 1, fill, BAR_H - 2);
     // The marker runs along the bar once. It turns gold when the press was in the zone.

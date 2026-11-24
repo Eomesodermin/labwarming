@@ -8,6 +8,7 @@ import { openFeedbackBox } from './ui/feedbackBox';
 import { openInbox } from './ui/inbox';
 import { mountUiRoot } from './ui/root';
 import { openSettings } from './ui/settings';
+import { openStaffPanel } from './ui/staffPanel';
 import { mountStationMenu } from './ui/stationMenu';
 import { mountStationPrompt } from './ui/stationPrompt';
 import { mountStockStrip } from './ui/stockStrip';
@@ -39,10 +40,14 @@ void showTitleScreen().then((state) => {
     host.ui.setBuild(false);
     openSettings(uiRoot, host);
   };
+  const openStaff = (): void => {
+    host.ui.setBuild(false);
+    openStaffPanel(uiRoot, host);
+  };
   const toggleBuild = (): void => host.ui.setBuild(!host.ui.build.active);
 
   mountUiRoot(uiRoot, game);
-  mountTopBar(uiRoot, host, { note: openNote, inbox: openMail, settings: openSet, build: toggleBuild });
+  mountTopBar(uiRoot, host, { note: openNote, inbox: openMail, settings: openSet, build: toggleBuild, staff: openStaff });
   mountStockStrip(uiRoot, host);
   mountTodoNote(uiRoot, host);
   mountStationPrompt(uiRoot, host);
@@ -54,6 +59,7 @@ void showTitleScreen().then((state) => {
   host.ui.panelKey = (code) => {
     if (code === 'KeyF') openNote();
     else if (code === 'KeyI') openMail();
+    else if (code === 'KeyT') openStaff();
     else if (code === 'KeyB') toggleBuild();
     else return false;
     return true;

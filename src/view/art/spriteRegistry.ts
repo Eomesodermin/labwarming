@@ -34,6 +34,9 @@ for (const def of Object.values(EQUIPMENT)) {
 }
 
 SPRITES['char.player'] = { kind: 'shape', fill: 'terracotta', text: 'plum', label: '' };
+SPRITES['char.technician'] = { kind: 'shape', fill: 'teal', text: 'plum', label: '' };
+SPRITES['char.washup'] = { kind: 'shape', fill: 'sky', text: 'plum', label: '' };
+SPRITES['char.cleaner'] = { kind: 'shape', fill: 'sage', text: 'plum', label: '' };
 
 export function equipmentSpriteKey(defId: string, tier: number): string {
   return SPRITES[`equip.${defId}.t${tier}`] ? `equip.${defId}.t${tier}` : `equip.${defId}.t1`;
