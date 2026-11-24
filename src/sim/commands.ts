@@ -1,3 +1,4 @@
+import { atStation, facedStation, pressSweetSpot, startJob } from './systems/jobs';
 import { findPathToAny, findPath } from './pathfinding';
 import { DIR_VECTORS, ROT_FACING, equipmentAt, frontTiles, isWalkable, opposite } from './grid';
 import type { SimEvent } from './simEvents';
@@ -7,6 +8,9 @@ import type { Agent, Dir, GameState, Point, Speed } from './types';
 export type Command =
   | { type: 'MovePlayer'; dir: Dir }
   | { type: 'SetPlayerTarget'; x: number; y: number; stationId?: string }
+  | { type: 'Interact'; stationId?: string; jobId?: string }
+  | { type: 'SweetSpotPress' }
+  | { type: 'CancelJob' }
   | { type: 'SetSpeed'; speed: Speed }
   | { type: 'TogglePause' };
 
@@ -34,6 +38,7 @@ function movePlayer(state: GameState, dir: Dir, events: SimEvent[]): void {
   if (state.clock.speed === 0) return reject(events, 'Paused');
 
   const moving = player.path.length > 0;
+  player.pendingStation = null;
   if (!moving) player.facing = dir;
   // One tile per press. While a step is more than half done, one more tile may be queued so
   // that holding a key walks without a pause between tiles.
@@ -74,8 +79,32 @@ function setPlayerTarget(
   }
   if (!route) return reject(events, 'No way to get there');
 
+  player.pendingStation = station ? station.id : null;
   player.path = next ? [{ x: next.x, y: next.y }, ...route] : route;
   player.arriveFacing = arriveFacing;
+}
+
+function interact(state: GameState, cmd: Extract<Command, { type: 'Interact' }>, events: SimEvent[]): void {
+  const player = state.agents[PLAYER_ID];
+  if (!player) return;
+  if (state.clock.speed === 0) return reject(events, 'Paused');
+  if (player.path.length > 0) return; // still walking: ignore
+  const eq = cmd.stationId ? state.equipment[cmd.stationId] : facedStation(state, player);
+  if (!eq) return reject(events, 'Nothing to use here');
+  if (!atStation(player, eq)) return reject(events, 'Stand in front of it to use it');
+  const active = player.jobId ? state.jobs[player.jobId] : undefined;
+  if (active && active.stationId === eq.id && (!cmd.jobId || cmd.jobId === active.defId)) {
+    pressSweetSpot(state, active, events);
+    return;
+  }
+  startJob(state, eq, cmd.jobId, events);
+}
+
+function sweetSpotPress(state: GameState, events: SimEvent[]): void {
+  const player = state.agents[PLAYER_ID];
+  const job = player?.jobId ? state.jobs[player.jobId] : undefined;
+  const eq = job ? state.equipment[job.stationId] : undefined;
+  if (player && job && eq && atStation(player, eq)) pressSweetSpot(state, job, events);
 }
 
 export function applyCommand(state: GameState, cmd: Command, events: SimEvent[]): void {
@@ -84,6 +113,18 @@ export function applyCommand(state: GameState, cmd: Command, events: SimEvent[])
       return movePlayer(state, cmd.dir, events);
     case 'SetPlayerTarget':
       return setPlayerTarget(state, cmd, events);
+    case 'Interact':
+      return interact(state, cmd, events);
+    case 'SweetSpotPress':
+      return sweetSpotPress(state, events);
+    case 'CancelJob': {
+      const p = state.agents[PLAYER_ID];
+      if (p) {
+        p.jobId = null;
+        p.pendingStation = null;
+      }
+      return;
+    }
     case 'SetSpeed':
       return setSpeed(state, cmd.speed, events);
     case 'TogglePause':

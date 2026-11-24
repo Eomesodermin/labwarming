@@ -68,7 +68,7 @@ describe('grid', () => {
   it('re-reads walkability when the grid version changes', () => {
     const s = createInitialState(1);
     expect(isWalkable(s, 12, 4)).toBe(false);
-    s.plots['b'] = { id: 'b', owned: true, roomType: 'lab', cleanliness: 100 };
+    s.plots['b'] = { id: 'b', owned: true, roomType: 'lab', cleanliness: 100, waste: 0 };
     expect(isWalkable(s, 12, 4)).toBe(false); // cached until the version moves
     s.gridVersion += 1;
     expect(isWalkable(s, 12, 4)).toBe(true);

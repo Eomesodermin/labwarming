@@ -1,4 +1,5 @@
 import { DEFAULT_PLAYER_NAME, SCHEMA_VERSION } from '../content/balance';
+import { START_STOCK } from '../content/items';
 import { PLAYER_START, PLOTS, START_EQUIPMENT, START_PLOT } from '../content/map';
 import { PLAYER_ID } from './commands';
 import { seedToState } from './rng';
@@ -8,7 +9,7 @@ export function createInitialState(seed: number): GameState {
   const plots: Record<string, Plot> = {};
   for (const p of PLOTS) {
     const start = p.id === START_PLOT;
-    plots[p.id] = { id: p.id, owned: start, roomType: start ? 'lab' : null, cleanliness: 100 };
+    plots[p.id] = { id: p.id, owned: start, roomType: start ? 'lab' : null, cleanliness: 100, waste: 0 };
   }
 
   const state: GameState = {
@@ -18,8 +19,13 @@ export function createInitialState(seed: number): GameState {
     tick: 0,
     clock: { day: 1, tickOfDay: 0, speed: 1, resumeSpeed: 1 },
     playerName: DEFAULT_PLAYER_NAME,
+    data: 0,
+    stock: { ...START_STOCK },
     plots,
     equipment: {},
+    jobs: {},
+    cultures: [],
+    stats: { splits: 0, culturesGrown: 0, experiments: 0, washes: 0, mediaMade: 0, wasteTaken: 0, tidies: 0, binned: 0, sweetHits: 0 },
     agents: {
       [PLAYER_ID]: {
         id: PLAYER_ID,
@@ -30,6 +36,8 @@ export function createInitialState(seed: number): GameState {
         path: [],
         moveProgress: 0,
         arriveFacing: null,
+        jobId: null,
+        pendingStation: null,
       },
     },
     gridVersion: 1,
@@ -39,7 +47,7 @@ export function createInitialState(seed: number): GameState {
 
   for (const e of START_EQUIPMENT) {
     const id = `eq${state.nextId++}`;
-    const eq: Equipment = { id, defId: e.defId, tier: e.tier, x: e.x, y: e.y, rot: e.rot, broken: false };
+    const eq: Equipment = { id, defId: e.defId, tier: e.tier, x: e.x, y: e.y, rot: e.rot, broken: e.broken === true };
     state.equipment[id] = eq;
   }
   return state;

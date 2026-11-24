@@ -4,4 +4,10 @@ import type { Speed } from './types';
 export type SimEvent =
   | { type: 'CommandRejected'; reason: string }
   | { type: 'SpeedChanged'; speed: Speed }
-  | { type: 'DayEnded'; day: number };
+  | { type: 'DayEnded'; day: number }
+  | { type: 'JobStarted'; jobId: string; defId: string; stationId: string }
+  | { type: 'JobCompleted'; defId: string; stationId: string }
+  | { type: 'SweetSpot'; stationId: string; hit: boolean }
+  | { type: 'CultureReady'; cultureId: string }
+  | { type: 'CultureContaminated'; cultureId: string }
+  | { type: 'Toast'; text: string };

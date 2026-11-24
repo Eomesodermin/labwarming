@@ -64,6 +64,8 @@ export interface StartingEquipment {
   y: number;
   rot: Rot;
   tier: number;
+  /** The fridge starts broken: it holds less and is repaired in milestone 3. */
+  broken?: boolean;
 }
 
 /** The starting Lab layout (design doc 4.1). Everything faces into the room. */
@@ -71,7 +73,7 @@ export const START_EQUIPMENT: readonly StartingEquipment[] = [
   { defId: 'hood', x: 2, y: 2, rot: 0, tier: 1 },
   { defId: 'bench', x: 5, y: 2, rot: 0, tier: 1 },
   { defId: 'incubator', x: 8, y: 2, rot: 0, tier: 1 },
-  { defId: 'fridge', x: 9, y: 2, rot: 0, tier: 1 },
+  { defId: 'fridge', x: 9, y: 2, rot: 0, tier: 1, broken: true },
   { defId: 'shelf', x: 9, y: 4, rot: 1, tier: 1 },
   { defId: 'sink', x: 2, y: 7, rot: 2, tier: 1 },
   { defId: 'bin', x: 3, y: 7, rot: 2, tier: 1 },

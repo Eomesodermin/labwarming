@@ -1,6 +1,8 @@
 // All game state is plain JSON data: no classes, no functions, no Maps or Sets.
 // Entities refer to each other by id.
 
+import type { Stock } from '../content/items';
+
 export type Dir = 'up' | 'down' | 'left' | 'right';
 
 /** Equipment rotation. The number is the direction the front of the item faces: 0 down, 1 left, 2 up, 3 right. */
@@ -34,6 +36,8 @@ export interface Plot {
   roomType: RoomTypeId | null;
   /** 0 to 100. */
   cleanliness: number;
+  /** Waste bags in the room's bin or bins. */
+  waste: number;
 }
 
 export interface Equipment {
@@ -62,6 +66,48 @@ export interface Agent {
   moveProgress: number;
   /** Direction to turn to once the path is finished (used to face a station). */
   arriveFacing: Dir | null;
+  /** The job being worked. It only progresses while the agent stands in front of its station. */
+  jobId: string | null;
+  /** A station to start the default job at once the agent arrives (set by clicking a station). */
+  pendingStation: string | null;
+}
+
+export type CultureStatus = 'growing' | 'ready' | 'contaminated';
+
+export interface Culture {
+  id: string;
+  /** The incubator whose slot it fills. */
+  incubatorId: string;
+  /** Ticks left to grow. */
+  growTicksLeft: number;
+  status: CultureStatus;
+}
+
+export interface Job {
+  id: string;
+  defId: string;
+  stationId: string;
+  workerId: string;
+  progressTicks: number;
+  totalTicks: number;
+  /** The sweet-spot green zone, in ticks of progress. */
+  sweetStart: number;
+  sweetEnd: number;
+  /** One press per job. */
+  sweetPressed: boolean;
+  sweetHit: boolean;
+}
+
+export interface Stats {
+  splits: number;
+  culturesGrown: number;
+  experiments: number;
+  washes: number;
+  mediaMade: number;
+  wasteTaken: number;
+  tidies: number;
+  binned: number;
+  sweetHits: number;
 }
 
 export interface GameState {
@@ -72,9 +118,15 @@ export interface GameState {
   tick: number;
   clock: Clock;
   playerName: string;
+  /** Data from experiments. Spent on papers from milestone 3. */
+  data: number;
+  stock: Stock;
   plots: Record<string, Plot>;
   equipment: Record<string, Equipment>;
   agents: Record<string, Agent>;
+  jobs: Record<string, Job>;
+  cultures: Culture[];
+  stats: Stats;
   /** Bumped on any change that affects walkability. Path caches are keyed by it. */
   gridVersion: number;
   flags: Record<string, boolean | number>;

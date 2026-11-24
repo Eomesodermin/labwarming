@@ -39,3 +39,22 @@ describe('content', () => {
     }
   });
 });
+
+describe('hand-job content', () => {
+  it('names a station that exists for every job', async () => {
+    const { JOBS } = await import('../../src/content/jobs');
+    for (const j of Object.values(JOBS)) expect(EQUIPMENT[j.station], j.id).toBeDefined();
+  });
+
+  it('only uses tier stats that exist', async () => {
+    const { JOBS } = await import('../../src/content/jobs');
+    for (const j of Object.values(JOBS)) {
+      if (j.secondsStat) expect(EQUIPMENT[j.station]?.stats?.[j.secondsStat], j.id).toBeDefined();
+    }
+  });
+
+  it('has to-do steps that name real stats', async () => {
+    const { TODO_STEPS } = await import('../../src/content/tutorial');
+    expect(TODO_STEPS).toHaveLength(6);
+  });
+});
