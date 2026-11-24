@@ -35,7 +35,7 @@ export function createInitialState(seed: number): GameState {
     equipment: {},
     jobs: {},
     cultures: [],
-    stats: { ordersPlaced: 0, papersWritten: 0, presentations: 0, boxesPutAway: 0, splits: 0, culturesGrown: 0, experiments: 0, washes: 0, mediaMade: 0, wasteTaken: 0, tidies: 0, binned: 0, sweetHits: 0 },
+    stats: { ordersPlaced: 0, papersWritten: 0, presentations: 0, boxesPutAway: 0, splits: 0, culturesGrown: 0, experiments: 0, washes: 0, mediaMade: 0, wasteTaken: 0, tidies: 0, binned: 0, sweetHits: 0, autoclaveCycles: 0, plotsBought: 0 },
     agents: {
       [PLAYER_ID]: {
         id: PLAYER_ID,
@@ -57,7 +57,7 @@ export function createInitialState(seed: number): GameState {
 
   for (const e of START_EQUIPMENT) {
     const id = `eq${state.nextId++}`;
-    const eq: Equipment = { id, defId: e.defId, tier: e.tier, x: e.x, y: e.y, rot: e.rot, broken: e.broken === true };
+    const eq: Equipment = { id, defId: e.defId, tier: e.tier, x: e.x, y: e.y, rot: e.rot, broken: e.broken === true, cycle: null };
     state.equipment[id] = eq;
   }
   sendEmailRow(state, 'pi_welcome');

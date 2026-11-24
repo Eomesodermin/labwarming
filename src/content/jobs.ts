@@ -13,7 +13,9 @@ export type JobId =
   | 'writePaper'
   | 'revisePaper'
   | 'makePresentation'
-  | 'writeGrant';
+  | 'writeGrant'
+  | 'loadAutoclave'
+  | 'coffeeBreak';
 
 export interface JobDef {
   id: JobId;
@@ -23,6 +25,8 @@ export interface JobDef {
   /** Seconds at 1x for the player, unless `secondsStat` names a tier stat on the station. */
   seconds: number;
   secondsStat?: string;
+  /** A tier stat that divides the time (the desk's writing speed). */
+  speedStat?: string;
   /** Finishing this job lowers the room's Cleanliness. */
   dirties: boolean;
 }
@@ -44,16 +48,26 @@ export const JOBS: Record<JobId, JobDef> = {
   tidyUp: { id: 'tidyUp', name: 'Tidy up', station: 'spray', seconds: 8, dirties: false },
   binCulture: { id: 'binCulture', name: 'Bin a culture', station: 'incubator', seconds: 3, dirties: true },
   putAwayOrder: { id: 'putAwayOrder', name: 'Put away order', station: 'bay', seconds: 6, dirties: false },
-  writePaper: { id: 'writePaper', name: 'Write paper', station: 'desk', seconds: PAPER.writeSec, dirties: false },
-  revisePaper: { id: 'revisePaper', name: 'Revise paper', station: 'desk', seconds: PAPER.reviseSec, dirties: false },
+  writePaper: { id: 'writePaper', name: 'Write paper', station: 'desk', seconds: PAPER.writeSec, speedStat: 'speed', dirties: false },
+  revisePaper: { id: 'revisePaper', name: 'Revise paper', station: 'desk', seconds: PAPER.reviseSec, speedStat: 'speed', dirties: false },
   makePresentation: {
     id: 'makePresentation',
     name: 'Make presentation',
     station: 'desk',
     seconds: PRESENTATION.sec,
+    speedStat: 'speed',
     dirties: false,
   },
-  writeGrant: { id: 'writeGrant', name: 'Write grant', station: 'desk', seconds: GRANT_WRITE_SEC, dirties: false },
+  writeGrant: { id: 'writeGrant', name: 'Write grant', station: 'desk', seconds: GRANT_WRITE_SEC, speedStat: 'speed', dirties: false },
+  loadAutoclave: {
+    id: 'loadAutoclave',
+    name: 'Run autoclave',
+    station: 'autoclave',
+    seconds: 6,
+    secondsStat: 'loadSec',
+    dirties: true,
+  },
+  coffeeBreak: { id: 'coffeeBreak', name: 'Coffee break', station: 'coffee', seconds: 20, secondsStat: 'breakSec', dirties: false },
 };
 
 export function jobsForStation(defId: EquipmentDefId): JobDef[] {
@@ -79,6 +93,8 @@ export const TUNING = {
   sweetTidy: 10,
   /** Cleanliness lost per finished job in the room. */
   dirtPerJob: 2,
+  /** Coffee break: the player works this much faster for a while. */
+  coffee: { speedBonus: 0.1, seconds: 60 },
   /** Cultures. */
   contamination: {
     base: 0.05,

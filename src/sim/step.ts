@@ -9,6 +9,7 @@ import { ordersSystem } from './systems/orders';
 import { papersSystem } from './systems/papers';
 import { culturesSystem } from './systems/cultures';
 import { jobsSystem } from './systems/jobs';
+import { machinesSystem } from './systems/machines';
 import { movementSystem } from './systems/movement';
 
 /**
@@ -19,7 +20,7 @@ import { movementSystem } from './systems/movement';
  *
  * System order (design doc 8.6): commands, clock, director, orders, cultures, machines,
  * staffAi, movement, jobs, needs, cleanliness, papers, grants, visitors, inspection,
- * economy, goals, tutorial. Only the systems that exist so far are called, in that order (clock, director, orders, cultures, movement, jobs, papers, grants, economy).
+ * economy, goals, tutorial. Only the systems that exist so far are called, in that order (clock, director, orders, cultures, machines, movement, jobs, papers, grants, economy).
  */
 export function step(state: GameState, commands: readonly Command[]): SimEvent[] {
   const events: SimEvent[] = [];
@@ -30,6 +31,7 @@ export function step(state: GameState, commands: readonly Command[]): SimEvent[]
   directorSystem(state, events);
   ordersSystem(state, events);
   culturesSystem(state, events);
+  machinesSystem(state, events);
   movementSystem(state);
   jobsSystem(state, events);
   papersSystem(state, events);

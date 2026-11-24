@@ -57,7 +57,7 @@ describe('pathfinding', () => {
   it('returns null when the Lab is walled in', () => {
     const s = createInitialState(1);
     // Block the door approach with a fake piece of equipment.
-    s.equipment['block'] = { id: 'block', defId: 'sink', tier: 1, x: 5, y: 7, rot: 2, broken: false };
+    s.equipment['block'] = { id: 'block', defId: 'sink', tier: 1, x: 5, y: 7, rot: 2, broken: false, cycle: null };
     s.gridVersion += 1;
     expect(findPath(s, { x: 5, y: 5 }, { x: 10, y: 9 })).toBeNull();
     // Unless the door is reached from another tile: (5,7) is the only tile inside the door.
@@ -88,7 +88,7 @@ describe('pathfinding', () => {
     const s = createInitialState(1);
     const before = findPath(s, { x: 4, y: 5 }, { x: 6, y: 5 });
     expect(before?.length).toBe(2);
-    s.equipment['wall'] = { id: 'wall', defId: 'sink', tier: 1, x: 5, y: 5, rot: 0, broken: false };
+    s.equipment['wall'] = { id: 'wall', defId: 'sink', tier: 1, x: 5, y: 5, rot: 0, broken: false, cycle: null };
     expect(findPath(s, { x: 4, y: 5 }, { x: 6, y: 5 })?.length).toBe(2); // stale cache, as designed
     s.gridVersion += 1;
     expect(findPath(s, { x: 4, y: 5 }, { x: 6, y: 5 })?.length).toBe(4);

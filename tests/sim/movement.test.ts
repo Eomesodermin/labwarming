@@ -124,7 +124,7 @@ describe('movement', () => {
   it('stops safely if the way is blocked mid-path', () => {
     const s = createInitialState(1);
     step(s, [{ type: 'SetPlayerTarget', x: 8, y: 5 }]);
-    s.equipment['block'] = { id: 'block', defId: 'sink', tier: 1, x: 7, y: 5, rot: 0, broken: false };
+    s.equipment['block'] = { id: 'block', defId: 'sink', tier: 1, x: 7, y: 5, rot: 0, broken: false, cycle: null };
     s.gridVersion += 1;
     run(s, 40);
     const p = getPlayer(s);

@@ -102,3 +102,55 @@ describe('validation and corrupted saves', () => {
     expect(() => validateState({ ...raw, clock: { day: 1, tickOfDay: 0, speed: 7, resumeSpeed: 1 } })).toThrow(/speed/);
   });
 });
+
+describe('migration from version 1 (milestone 3 saves)', () => {
+  /** What a milestone 3 save looks like: no autoclave cycle on equipment, two fewer stats. */
+  function m3Save(): Record<string, unknown> {
+    const raw = JSON.parse(serialize(newGame(5))) as Record<string, unknown>;
+    raw['schemaVersion'] = 1;
+    for (const eq of Object.values(raw['equipment'] as Record<string, Record<string, unknown>>)) delete eq['cycle'];
+    const stats = raw['stats'] as Record<string, unknown>;
+    delete stats['autoclaveCycles'];
+    delete stats['plotsBought'];
+    return raw;
+  }
+
+  it('is rejected by validation before migrating and accepted after', () => {
+    expect(() => validateState(m3Save())).toThrow();
+    const loaded = restoreState(m3Save(), 1);
+    expect(loaded.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(Object.values(loaded.equipment).every((e) => e.cycle === null)).toBe(true);
+    expect(loaded.stats.autoclaveCycles).toBe(0);
+    expect(loaded.stats.plotsBought).toBe(0);
+  });
+
+  it('gives back the same game as a new one with the same seed', () => {
+    expect(deserialize(JSON.stringify(m3Save()))).toEqual(newGame(5));
+  });
+
+  it('keeps a half-finished game playable and lets the old save build a room', () => {
+    const raw = m3Save();
+    (raw['plots'] as Record<string, Record<string, unknown>>)['b'] = { id: 'b', owned: false, roomType: null, cleanliness: 100, waste: 0 };
+    const loaded = deserialize(JSON.stringify(raw));
+    loaded.funds = 1000;
+    step(loaded, [{ type: 'BuyPlot', plotId: 'c', roomType: 'washup' }]);
+    expect(loaded.plots['c']?.owned).toBe(true);
+    run(loaded, 100);
+    expect(deserialize(serialize(loaded))).toEqual(loaded);
+  });
+
+  it('round trips a rearranged lab with a running autoclave', () => {
+    const s = newGame(9);
+    s.funds = 3000;
+    step(s, [{ type: 'BuyPlot', plotId: 'b', roomType: 'washup' }]);
+    step(s, [{ type: 'PlaceEquipment', defId: 'autoclave', x: 12, y: 3, rot: 0 }]);
+    step(s, [{ type: 'MoveEquipment', equipmentId: Object.values(s.equipment).find((e) => e.defId === 'bench')?.id ?? '', x: 3, y: 4, rot: 0 }]);
+    const ac = Object.values(s.equipment).find((e) => e.defId === 'autoclave');
+    if (ac) ac.cycle = { flasks: 4, ticksLeft: 120 };
+    const back = deserialize(serialize(s));
+    expect(back).toEqual(s);
+    run(s, 300);
+    run(back, 300);
+    expect(serialize(back)).toBe(serialize(s));
+  });
+});

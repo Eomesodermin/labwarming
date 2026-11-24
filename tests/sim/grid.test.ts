@@ -57,7 +57,7 @@ describe('grid', () => {
   });
 
   it('computes front tiles for each rotation', () => {
-    const eq = { id: 'x', defId: 'bench', tier: 1, x: 5, y: 5, rot: 0 as const, broken: false };
+    const eq = { id: 'x', defId: 'bench', tier: 1, x: 5, y: 5, rot: 0 as const, broken: false, cycle: null };
     expect(frontTiles(eq)).toEqual([{ x: 5, y: 6 }, { x: 6, y: 6 }]);
     expect(frontTiles({ ...eq, rot: 2 })).toEqual([{ x: 5, y: 4 }, { x: 6, y: 4 }]);
     expect(footprintTiles({ ...eq, rot: 1 })).toEqual([{ x: 5, y: 5 }, { x: 5, y: 6 }]);

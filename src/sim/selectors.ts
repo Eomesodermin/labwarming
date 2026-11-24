@@ -10,6 +10,7 @@ import { baseTile } from './grid';
 import { coldCapacity, coldUsed, dryCapacity, dryUsed, plotOf, wasteCapacity } from './stock';
 import { atStation, facedStation, jobBlocker, stationHasMenu } from './systems/jobs';
 import { slotsOf } from './systems/cultures';
+import { autoclaveCapacity } from './systems/machines';
 import type { Agent, Equipment, GameState, Plot } from './types';
 
 /** Time of day on the 24 hour clock. The day runs from 08:00 to 18:00. */
@@ -85,6 +86,11 @@ function stationInfo(state: GameState, eq: Equipment): string | null {
       if (revise) parts.push(`${revise} to revise`);
       return parts.join(', ');
     }
+    case 'autoclave': {
+      if (!eq.cycle) return `Holds ${autoclaveCapacity(eq)} flasks per cycle`;
+      if (eq.cycle.ticksLeft > 0) return `${eq.cycle.flasks} flasks, ${Math.ceil(eq.cycle.ticksLeft / TICKS_PER_SECOND)} s left`;
+      return `${eq.cycle.flasks} flasks waiting for room on the shelf`;
+    }
     case 'fridge':
       return `Cold storage ${coldUsed(state)}/${coldCapacity(state)}${eq.broken ? ' (broken, holds less)' : ''}`;
     case 'shelf':
@@ -102,6 +108,7 @@ export function stationPrompt(state: GameState): StationPrompt | null {
   if (!eq || !atStation(player, eq)) return null;
   const menu = stationMenu(state, eq);
   const defs = jobsForStation(eq.defId);
+  if (!menu && defs.length === 0 && EQUIPMENT[eq.defId]?.category === 'decor') return null; // a plant has nothing to say
   const options: PromptOption[] = menu
     ? [{ key: 'E', jobId: '', name: menu.title, reason: null }]
     : defs.slice(0, 2).map((d, i) => ({

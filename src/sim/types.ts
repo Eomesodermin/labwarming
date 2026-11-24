@@ -49,6 +49,15 @@ export interface Equipment {
   y: number;
   rot: Rot;
   broken: boolean;
+  /** The autoclave's running cycle, or null when idle. Always null for other equipment. */
+  cycle: Cycle | null;
+}
+
+export interface Cycle {
+  /** Flasks inside, waiting to come out clean. */
+  flasks: number;
+  /** Ticks of running left. At 0 the flasks come out as soon as the shelf has room. */
+  ticksLeft: number;
 }
 
 export type AgentKind = 'player';
@@ -155,6 +164,8 @@ export interface Stats {
   tidies: number;
   binned: number;
   sweetHits: number;
+  autoclaveCycles: number;
+  plotsBought: number;
 }
 
 export interface GameState {

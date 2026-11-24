@@ -48,3 +48,6 @@ export const GRANTS: readonly GrantDef[] = [
 export function grantDef(id: string): GrantDef | undefined {
   return GRANTS.find((g) => g.id === id);
 }
+
+/** Selling equipment returns this share of everything paid for it. */
+export const SELL_REFUND = 0.5;

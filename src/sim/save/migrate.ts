@@ -19,7 +19,27 @@ export interface Migration {
  * One function per schema step (1 to 2, 2 to 3, ...), in order. Every change to `GameState`
  * after milestone 3 must bump `SCHEMA_VERSION` and add a step here, with a test.
  */
-export const MIGRATIONS: readonly Migration[] = [];
+export const MIGRATIONS: readonly Migration[] = [
+  {
+    // Version 1 to 2 (milestone 4): equipment gains an autoclave cycle, stats gain two counters.
+    from: 1,
+    run: (state) => {
+      const equipment = state['equipment'];
+      if (typeof equipment === 'object' && equipment !== null) {
+        for (const eq of Object.values(equipment as Record<string, Raw>)) {
+          if (eq['cycle'] === undefined) eq['cycle'] = null;
+        }
+      }
+      const stats = state['stats'];
+      if (typeof stats === 'object' && stats !== null) {
+        const st = stats as Raw;
+        if (st['autoclaveCycles'] === undefined) st['autoclaveCycles'] = 0;
+        if (st['plotsBought'] === undefined) st['plotsBought'] = 0;
+      }
+      return state;
+    },
+  },
+];
 
 /** Runs every step from the save's version to the target version. The input is not changed. */
 export function migrate(

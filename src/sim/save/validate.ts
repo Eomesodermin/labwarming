@@ -34,9 +34,12 @@ export function validateState(raw: unknown): GameState {
   for (const k of ['plots', 'equipment', 'agents', 'jobs', 'grants', 'stats', 'flags']) need(isObj(s[k]), `${k} is missing`);
   for (const k of ['cultures', 'papers', 'orders', 'boxes', 'inbox']) need(Array.isArray(s[k]), `${k} is missing`);
 
+  for (const k of ['autoclaveCycles', 'plotsBought']) need(isNum((s['stats'] as Raw)[k]), `stats.${k}`);
   for (const p of Object.values(s['plots'] as Raw)) need(isObj(p) && isNum(p['cleanliness']) && isNum(p['waste']), 'a plot');
   for (const e of Object.values(s['equipment'] as Raw)) {
     need(isObj(e) && typeof e['defId'] === 'string' && isNum(e['x']) && isNum(e['y']) && isNum(e['tier']) && isNum(e['rot']), 'a piece of equipment');
+    const cycle = (e as Raw)['cycle'];
+    need(cycle === null || (isObj(cycle) && isNum(cycle['flasks']) && isNum(cycle['ticksLeft'])), 'an autoclave cycle');
   }
   const player = (s['agents'] as Raw)['player'];
   need(isObj(player) && isNum(player['x']) && isNum(player['y']) && Array.isArray(player['path']), 'the player');

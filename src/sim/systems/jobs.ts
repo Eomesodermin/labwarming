@@ -1,8 +1,10 @@
+import { TICKS_PER_SECOND } from '../../content/balance';
 import { tierStat } from '../../content/equipment';
 import { PAPER, PRESENTATION } from '../../content/economy';
 import { ITEM_NAMES } from '../../content/items';
 import { JOBS, TUNING, jobsForStation, type JobDef } from '../../content/jobs';
 import { ORDERS, isKnownOrder } from '../../content/orders';
+import { OFFICE_WRITE_SPEED } from '../../content/rooms';
 import { ROT_FACING, equipmentAt, DIR_VECTORS, frontTiles, opposite } from '../grid';
 import { nextFloat } from '../rng';
 import type { SimEvent } from '../simEvents';
@@ -10,6 +12,7 @@ import { secondsToTicks } from '../ticks';
 import { addStock, binFull, coldFree, dryFree, freeSpaceFor, plotOf, storageFullReason } from '../stock';
 import type { Agent, Culture, Equipment, GameState, Job } from '../types';
 import { cleanRoom, dirtyRoom } from './cleanliness';
+import { autoclaveCapacity, startCycle } from './machines';
 import { incubatorWithFreeSlot } from './cultures';
 import { applyForGrant, grantBlocker, openGrant } from './grants';
 import { acceptRevision, submitPaper } from './papers';
@@ -19,8 +22,15 @@ const PLAYER = 'player';
 export { secondsToTicks };
 
 /** Seconds a job takes for the player at this station and tier. */
-export function jobSeconds(def: JobDef, eq: Equipment): number {
-  return def.secondsStat ? tierStat(def.station, def.secondsStat, eq.tier, def.seconds) : def.seconds;
+export function jobSeconds(def: JobDef, eq: Equipment, state?: GameState): number {
+  let sec = def.secondsStat ? tierStat(def.station, def.secondsStat, eq.tier, def.seconds) : def.seconds;
+  if (def.speedStat) {
+    let speed = tierStat(def.station, def.speedStat, eq.tier, 1);
+    const plotId = plotOf(eq);
+    if (state && plotId && state.plots[plotId]?.roomType === 'office') speed *= OFFICE_WRITE_SPEED;
+    sec /= speed;
+  }
+  return sec;
 }
 
 /** Stations where E opens a menu instead of starting a job: the desk, and a broken fridge (repair). */
@@ -93,6 +103,12 @@ export function jobBlocker(state: GameState, def: JobDef, eq: Equipment): string
       return null;
     case 'writeGrant':
       return grantBlocker(state);
+    case 'loadAutoclave':
+      if (eq.cycle) return eq.cycle.ticksLeft > 0 ? `Running, ${Math.ceil(eq.cycle.ticksLeft / TICKS_PER_SECOND)} s left` : 'Waiting for room on the shelf';
+      if (s.dirtyFlasks < 1) return 'Needs 1 dirty flask';
+      return null;
+    case 'coffeeBreak':
+      return null;
   }
 }
 
@@ -105,7 +121,7 @@ function findJob(state: GameState, workerId: string, stationId: string, defId: s
 }
 
 function createJob(state: GameState, def: JobDef, eq: Equipment, workerId: string): Job {
-  let total = secondsToTicks(jobSeconds(def, eq));
+  let total = secondsToTicks(jobSeconds(def, eq, state));
   if (def.id === 'washFlask' && state.flags['washBoost'] === true) {
     total = Math.max(1, Math.round(total * TUNING.sweetWashNext));
     state.flags['washBoost'] = false;
@@ -271,6 +287,17 @@ function complete(state: GameState, job: Job, def: JobDef, eq: Equipment, events
       if (grant) applyForGrant(state, grant, events);
       break;
     }
+    case 'loadAutoclave': {
+      const n = Math.min(autoclaveCapacity(eq), s.dirtyFlasks);
+      s.dirtyFlasks -= n;
+      startCycle(eq, n);
+      toast(events, `Autoclave running with ${n} flask${n === 1 ? '' : 'es'}`);
+      break;
+    }
+    case 'coffeeBreak':
+      state.flags['coffeeTicks'] = secondsToTicks(TUNING.coffee.seconds);
+      toast(events, `Coffee! Work is ${Math.round(TUNING.coffee.speedBonus * 100)}% faster for ${TUNING.coffee.seconds} s`);
+      break;
   }
   if (def.dirties) dirtyRoom(state, plotId);
 }
@@ -282,6 +309,10 @@ function complete(state: GameState, job: Job, def: JobDef, eq: Equipment, events
 export function jobsSystem(state: GameState, events: SimEvent[]): void {
   const player = state.agents[PLAYER];
   if (!player) return;
+
+  const coffee = state.flags['coffeeTicks'];
+  const boosted = typeof coffee === 'number' && coffee > 0;
+  if (boosted) state.flags['coffeeTicks'] = coffee - 1;
 
   // A click on a station: start its job once the player has arrived.
   if (player.pendingStation && player.path.length === 0 && player.arriveFacing === null) {
@@ -309,6 +340,8 @@ export function jobsSystem(state: GameState, events: SimEvent[]): void {
   if (!atStation(player, eq)) return; // paused
 
   job.progressTicks += 1;
+  // After a coffee break the player works a little faster: an extra tick every tenth tick.
+  if (boosted && state.tick % Math.round(1 / TUNING.coffee.speedBonus) === 0) job.progressTicks += 1;
   if (job.progressTicks < job.totalTicks) return;
 
   delete state.jobs[job.id];
