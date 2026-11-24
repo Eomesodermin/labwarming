@@ -1,6 +1,9 @@
 import type { GameHost } from '../host';
 import { BUILD_ID } from '../platform/buildInfo';
 import { formatClock, goalProgress, unreadCount } from '../sim/selectors';
+import { canvasUrl } from '../view/art/pixelmap';
+import { spriteCanvas } from '../view/art/spriteRegistry';
+import { sound } from '../view/audio/sound';
 import { ringSvg } from './labPanel';
 
 interface SpeedButton {
@@ -30,6 +33,7 @@ export function mountTopBar(
       <button type="button" class="btn" data-action="note" title="Leave a note (F)">Note</button>
       <button type="button" class="btn" data-action="inbox" title="Inbox (I)">Inbox<span class="badge" data-role="badge" hidden>0</span></button>
       <button type="button" class="btn" data-action="settings" title="Settings and saves">Settings</button>
+      <button type="button" class="btn btn--icon" data-action="sound" title="Sound on or off (M)" aria-label="Sound" aria-pressed="true"><img class="pixicon" alt="" width="16" height="16" /></button>
       <span class="topbar__sep"></span>
       <button type="button" class="btn" data-speed="0" title="Pause or resume (P)">Pause</button>
       <button type="button" class="btn" data-speed="1" title="Normal speed (1)">1x</button>
@@ -51,6 +55,21 @@ export function mountTopBar(
   const ringEl = q('ring');
   const goalCount = q('goalcount');
   let ringLast = '';
+  const soundBtn = bar.querySelector<HTMLButtonElement>('button[data-action="sound"]') as HTMLButtonElement;
+  const soundImg = soundBtn.querySelector('img') as HTMLImageElement;
+  const refreshSound = (): void => {
+    const off = sound.isMuted();
+    soundImg.src = canvasUrl(spriteCanvas(off ? 'icon.speaker_off' : 'icon.speaker_on'));
+    soundBtn.setAttribute('aria-pressed', String(!off));
+    soundBtn.title = off ? 'Sound is off. Click or press M to turn it on' : 'Sound is on. Click or press M to turn it off';
+  };
+  sound.onChange(refreshSound);
+  refreshSound();
+  soundBtn.addEventListener('click', () => {
+    soundBtn.blur();
+    sound.setMuted(!sound.isMuted());
+    if (!sound.isMuted()) sound.play('ding');
+  });
   for (const name of ['build', 'lab', 'staff', 'note', 'inbox', 'settings'] as const) {
     bar.querySelector<HTMLButtonElement>(`button[data-action="${name}"]`)?.addEventListener('click', (e) => {
       (e.currentTarget as HTMLButtonElement).blur();

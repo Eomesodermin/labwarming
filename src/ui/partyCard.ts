@@ -1,8 +1,11 @@
 import { PARTY, PROMPTS } from '../content/facility';
+import { PALETTE_HEX } from '../view/art/palette';
 import type { GameHost } from '../host';
 import { formatPlayTime } from '../platform/feedback';
 import { goalRows, staffRows } from '../sim/selectors';
-import { PALETTE_HEX } from '../view/art/palette';
+import { canvasUrl } from '../view/art/pixelmap';
+import { hashText, portraitCanvas, spriteCanvas } from '../view/art/spriteRegistry';
+import type { AgentKind } from '../sim/types';
 import { button, el, esc } from './dom';
 import { openModal, whenFree } from './modal';
 
@@ -23,15 +26,16 @@ function confetti(): string {
 /** The group photo: the postdoc and the whole team in a row, Prof. Quince at the end, with a cake. */
 function photoHtml(host: GameHost): string {
   const s = host.state;
-  const people: Array<{ name: string; colour: keyof typeof PALETTE_HEX }> = [
-    { name: s.playerName, colour: 'terracotta' },
-    ...staffRows(s).map((r) => ({ name: r.name, colour: r.colour })),
-    { name: 'Prof. Quince', colour: 'berry' },
+  const sprite = (kind: AgentKind, colour: Parameters<typeof portraitCanvas>[1], id: string): string =>
+    `<img class="photo__sprite" alt="" src="${canvasUrl(portraitCanvas(kind, colour, hashText(id)))}" width="48" height="72" />`;
+  const people: Array<{ name: string; img: string }> = [
+    { name: s.playerName, img: sprite('player', null, 'player') },
+    ...staffRows(s).map((r) => ({ name: r.name, img: sprite(r.role, r.colour, r.id) })),
+    { name: 'Prof. Quince', img: sprite('pi', null, 'pi') },
   ];
-  const figs = people
-    .map((p) => `<div class="photo__who"><span class="photo__head"></span><span class="photo__body" style="background:${PALETTE_HEX[p.colour]}"></span><span class="photo__name">${esc(p.name)}</span></div>`)
-    .join('');
-  return `<div class="photo"><div class="photo__row">${figs}<div class="photo__cake" aria-label="cake"></div></div><div class="photo__caption">${esc(PARTY.caption)}</div></div>`;
+  const figs = people.map((p) => `<div class="photo__who">${p.img}<span class="photo__name">${esc(p.name)}</span></div>`).join('');
+  const cake = `<img class="photo__sprite photo__cake" alt="A cake" src="${canvasUrl(spriteCanvas('icon.cake'))}" width="48" height="44" />`;
+  return `<div class="photo"><div class="photo__row">${figs}<div class="photo__who">${cake}<span class="photo__name">Cake</span></div></div><div class="photo__caption">${esc(PARTY.caption)}</div></div>`;
 }
 
 /** The party card (once) and the two feedback prompts (once each). */

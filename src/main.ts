@@ -1,7 +1,8 @@
 import { createHost } from './host';
 import { startAutosave } from './platform/autosave';
 import { trackRecentEvents } from './platform/eventLog';
-import { createGame } from './view/game';
+import { wireSound } from './view/audio/wire';
+import { sound } from './view/audio/sound';
 import { mountChips } from './ui/chips';
 import { mountEndOfDay } from './ui/endOfDay';
 import { mountBuildPanel } from './ui/buildPanel';
@@ -19,6 +20,7 @@ import { mountStorageBanner } from './ui/storageBanner';
 import { showTitleScreen } from './ui/titleScreen';
 import { mountTodoNote } from './ui/todoNote';
 import { mountToasts } from './ui/toast';
+import { mountWorldLabels } from './ui/worldLabels';
 import { mountTopBar } from './ui/topBar';
 
 // Wires the layers together: platform, sim, view and ui.
@@ -26,9 +28,15 @@ const gameParent = document.getElementById('game');
 const uiRoot = document.getElementById('ui-root');
 if (!gameParent || !uiRoot) throw new Error('index.html is missing #game or #ui-root');
 
-void showTitleScreen().then((state) => {
+// Phaser is a big download, so it loads in its own chunk while the title screen is up.
+const gameModule = import('./view/game');
+void gameModule.catch(() => undefined);
+
+void showTitleScreen().then(async (state) => {
   const host = createHost(state);
+  const { createGame } = await gameModule;
   const game = createGame(gameParent, host);
+  wireSound(host);
   const recent = trackRecentEvents(host);
   // Opening a panel on top of build mode ends build mode first.
   const openNote = (): void => {
@@ -55,6 +63,7 @@ void showTitleScreen().then((state) => {
   const toggleBuild = (): void => host.ui.setBuild(!host.ui.build.active);
 
   mountUiRoot(uiRoot, game);
+  mountWorldLabels(uiRoot, host);
   mountTopBar(uiRoot, host, { note: openNote, inbox: openMail, settings: openSet, build: toggleBuild, staff: openStaff, lab: () => openLab('goals') });
   mountStockStrip(uiRoot, host);
   mountTodoNote(uiRoot, host);
@@ -72,6 +81,7 @@ void showTitleScreen().then((state) => {
     else if (code === 'KeyT') openStaff();
     else if (code === 'KeyL') openLab('goals');
     else if (code === 'KeyB') toggleBuild();
+    else if (code === 'KeyM') sound.setMuted(!sound.isMuted());
     else return false;
     return true;
   };

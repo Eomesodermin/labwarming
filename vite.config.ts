@@ -20,6 +20,14 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        // Phaser goes in its own file, so the title screen and the rest of the page load first and the cache keeps Phaser between releases.
+        manualChunks(id: string) {
+          return id.includes('node_modules/phaser') ? 'phaser' : undefined;
+        },
+      },
+    },
   },
   test: {
     include: ['tests/**/*.test.ts'],

@@ -106,8 +106,20 @@ export function showTitleScreen(): Promise<GameState> {
     loadWrap.append(paste, go, file);
     card.append(loadWrap, msg);
 
-    const keys = el('p', 'title__keys');
-    keys.innerHTML = `<kbd>WASD</kbd> walk &nbsp; <kbd>E</kbd> use a station &nbsp; <kbd>P</kbd> pause &nbsp; <kbd>F</kbd> leave a note &nbsp; <kbd>I</kbd> inbox<br><span class="title__build">Build ${esc(BUILD_ID)}</span>`;
-    card.appendChild(keys);
+    // How to play: short, friendly, and open for a first visit.
+    const howto = el('details', 'howto');
+    howto.open = outcome.kind !== 'ok';
+    howto.innerHTML = `<summary>How to play</summary>
+      <ul class="howto__list">
+        <li><b>Walk</b> with <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or the arrow keys. You can also click where you want to go.</li>
+        <li><b>Use a machine</b> by standing in front of it and pressing <kbd>E</kbd>. A little prompt tells you what it does.</li>
+        <li><b>Press <kbd>E</kbd> again in the green zone</b> of the progress bar for a bonus. <kbd>Esc</kbd> stops a job.</li>
+        <li><b>Build</b> new rooms and equipment with <kbd>B</kbd>. Your to-do note tells you what to try first.</li>
+        <li><kbd>P</kbd> pauses. Nothing is timed, so take it slowly. The game saves itself.</li>
+      </ul>`;
+    card.appendChild(howto);
+    const foot = el('p', 'title__keys');
+    foot.innerHTML = `<span class="title__build">Build ${esc(BUILD_ID)}</span>`;
+    card.appendChild(foot);
   });
 }

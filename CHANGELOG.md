@@ -1,5 +1,27 @@
 # Changelog
 
+## Milestone 8: Art, sound, polish, balance
+
+### Built
+- Stage B art (design doc 7.4): every sprite is a text grid in `src/view/art/sprites/` (equipment, tiles, characters, icons, a digit font), painted at run time with the 16 colour palette through `spriteRegistry.ts`. The Stage A shapes and text labels are gone.
+- Equipment has real sprites with tier pips, a broken look (fridge, autoclave) and a full look (bin). Turned pieces get a small mustard front light. The 3 letter labels are gone: hover any piece to see its name and tier, and the station prompt shows it when you stand at it.
+- Characters: player, technician, wash-up crew, cleaner, media tech, Prof. Quince, Inspector Tock, Bodo and two visitor looks, each with 4 facings, two walk frames (driven by distance walked, so feet do not slide), a work frame, and a dithered shadow. Staff vary by skin, hair and an accent colour from their portrait colour. Props (clipboard, box, cake, cup, cloud, bucket, zzz) are sprites too.
+- Effects: sparkle on ready cultures, green fuzz on contaminated ones, steam over a running autoclave, exclamation and question marks, cake with a flickering candle, gold star, confetti on the party card. The party photo uses the real sprites.
+- Plots for sale are now soft green lots with a dashed outline and a small coin sign showing the cheapest room price. Hover one for "Plot for sale".
+- Sound, all generated with Web Audio: step, pop (job done), ding (sweet spot, culture ready), ping (email, hire), cha-ching (money in, accepted paper), thud (placement), clink (media bottle), knock (delivery), goal chime, party jingle, soft "nope". No music. Mute button in the top bar and key M, remembered in `labwarming.muted`.
+- Crisp rendering: `pixelArt`, `roundPixels`, no antialias, and an integer zoom whenever it fills at least 75% of the window (otherwise it fits). All world text is now HTML or sprites. Room names in build mode and hover names are HTML.
+- Title screen has a short "How to play" card, open on a first visit.
+- Phaser loads as its own chunk (function-form `manualChunks` works with Vite 8) while the title screen is up. The entry chunk is about 180 kB (59 kB gzip).
+- `CREDITS.md`, README with how to play, live link and the Pages setup step. A test checks sprite sizes and palette letters.
+
+### Deviations
+- The sprite registry has only the `pixelmap` kind. `shape` is gone with Stage A, and `file` is left for Stage C.
+- Tiers 2 and 3 use the tier 1 art plus pips, not separate drawings. The player has one look, not two.
+- Equipment facing up uses the front-facing art with the front light, not a back view. Left and right turn the art 90 degrees.
+- Build mode still zooms the camera to 0.75, so pixels are uneven there unless the screen scale happens to suit.
+- No balance numbers changed. Pacing bots: average 19.7, 20.2 and 20.0 min, slow 29.5, 32.0 and 32.5 min. The 25 to 35 minute human run is not checked here.
+- Fixed while testing: the new text layer briefly blocked clicks on the canvas.
+
 ## Milestone 7: Media Facility, Lab Warming goals, party, feedback prompts
 
 ### Built

@@ -20,6 +20,7 @@ export function mountUiRoot(root: HTMLElement, game: Phaser.Game): HTMLElement {
   place();
   game.scale.on('resize', place);
   window.addEventListener('resize', place);
+  window.addEventListener('labwarming:zoom', place);
   new ResizeObserver(place).observe(root.parentElement ?? document.body);
   // The canvas is created a moment after the game; place again once it exists.
   game.events.once('ready', place);
