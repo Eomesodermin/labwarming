@@ -19,6 +19,7 @@ const equipmentColours: Record<string, { fill: PaletteName; text: PaletteName }>
   bin: { fill: 'slate', text: 'paper' },
   spray: { fill: 'sage', text: 'plum' },
   desk: { fill: 'warmWood', text: 'plum' },
+  bay: { fill: 'butter', text: 'plum' },
 };
 
 export const SPRITES: Record<string, SpriteSource> = {};

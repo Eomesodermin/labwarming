@@ -4,7 +4,7 @@ import { MAP_H, MAP_W, TILE_SIZE } from '../../content/map';
 import type { GameHost } from '../../host';
 import { PLAYER_ID, type Command } from '../../sim/commands';
 import { isWalkable } from '../../sim/grid';
-import { stationPrompt } from '../../sim/selectors';
+import { facedMenu, stationPrompt } from '../../sim/selectors';
 import { step } from '../../sim/step';
 import { PALETTE } from '../art/palette';
 import { createWalkInput, type WalkInput } from '../input/walkInput';
@@ -28,6 +28,7 @@ export class LabScene extends Phaser.Scene {
   private status!: StatusRenderer;
   private cameraTarget!: Phaser.GameObjects.Zone;
   private acc = 0;
+  private shownState: GameHost['state'] | null = null;
 
   constructor() {
     super('LabScene');
@@ -36,6 +37,7 @@ export class LabScene extends Phaser.Scene {
   init(data: { host: GameHost }): void {
     this.host = data.host;
     this.acc = 0;
+    this.shownState = data.host.state;
   }
 
   create(): void {
@@ -61,6 +63,9 @@ export class LabScene extends Phaser.Scene {
     this.input_ = createWalkInput(
       (cmd) => this.host.send(cmd),
       () => stationPrompt(this.host.state)?.options[1]?.jobId,
+      () => this.host.ui.blocking > 0,
+      () => this.interact(),
+      (code) => this.host.ui.panelKey(code),
     );
     this.input.mouse?.disableContextMenu();
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
@@ -75,7 +80,23 @@ export class LabScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input_.destroy());
   }
 
+  /** E: start a job, press the sweet spot of the running job, or open the station's menu. */
+  private interact(): void {
+    const { state } = this.host;
+    const menu = facedMenu(state);
+    const player = state.agents[PLAYER_ID];
+    const job = player?.jobId ? state.jobs[player.jobId] : undefined;
+    if (menu && !(job && job.stationId === menu.stationId)) this.host.ui.openMenu();
+    else this.host.send({ type: 'Interact' });
+  }
+
   update(_time: number, delta: number): void {
+    if (this.host.state !== this.shownState) {
+      // A new game was loaded: rebuild the scene from the new state.
+      this.shownState = this.host.state;
+      this.scene.restart({ host: this.host });
+      return;
+    }
     const { state } = this.host;
     let pending = this.host.drain();
 

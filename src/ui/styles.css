@@ -13,6 +13,8 @@
   --sky: #a7d3d8;
   --stone: #b8a99a;
   --slate: #6e6a78;
+  --berry: #a8516e;
+  --dusty-rose: #d98c8c;
   font-family: ui-rounded, 'Segoe UI', system-ui, sans-serif;
 }
 
@@ -350,4 +352,491 @@ kbd {
 #ui-root > .prompt,
 #ui-root > .toasts {
   pointer-events: none;
+}
+
+/* Top bar extras. */
+.topbar__sep {
+  width: 1px;
+  height: 1.2em;
+  background: var(--stone);
+  margin: 0 2px;
+}
+
+.btn[aria-pressed='true'] {
+  background: var(--mustard);
+}
+
+.badge {
+  display: inline-block;
+  min-width: 1.2em;
+  margin-left: 0.4em;
+  padding: 0 0.3em;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--berry);
+  color: var(--paper);
+  font-size: 0.85em;
+  text-align: center;
+}
+
+.btn--primary {
+  background: var(--terracotta);
+  color: var(--paper);
+}
+
+.btn--primary:hover {
+  background: #c4623f;
+}
+
+.btn--danger {
+  background: var(--cream);
+  color: var(--berry);
+  border-color: var(--berry);
+}
+
+/* Station menu. */
+.menu {
+  position: absolute;
+  left: 50%;
+  bottom: max(10px, calc(var(--u) * 5px));
+  transform: translateX(-50%);
+  width: min(94%, calc(var(--u) * 150px));
+  box-sizing: border-box;
+  max-height: 70%;
+  overflow: auto;
+  padding: calc(var(--u) * 3px) calc(var(--u) * 4px);
+  background: var(--paper);
+  border: 2px solid var(--plum);
+  border-radius: 8px;
+  font-size: max(12px, calc(var(--u) * 5px));
+  box-shadow: 0 calc(var(--u) * 2px) 0 rgba(74, 53, 64, 0.3);
+}
+
+.menu__title {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  color: var(--terracotta);
+}
+
+.menu__funds {
+  color: var(--cocoa);
+  font-weight: 600;
+}
+
+.menu__group {
+  margin-top: 0.5em;
+  font-size: 0.85em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cocoa);
+}
+
+.menu__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0 0.6em;
+  align-items: baseline;
+  width: 100%;
+  margin-top: 2px;
+  padding: 2px 6px;
+  font: inherit;
+  color: var(--plum);
+  text-align: left;
+  background: var(--cream);
+  border: 1px solid var(--plum);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.menu__item:hover,
+.menu__item:focus-visible {
+  background: var(--butter);
+}
+
+.menu__item--blocked {
+  color: var(--slate);
+}
+
+.menu__label {
+  font-weight: 600;
+}
+
+.menu__detail {
+  color: var(--cocoa);
+  font-size: 0.9em;
+}
+
+.menu__reason {
+  grid-column: 2 / 4;
+  color: var(--berry);
+  font-weight: 600;
+  font-size: 0.9em;
+}
+
+.menu__foot {
+  margin-top: 0.4em;
+  font-size: 0.85em;
+  color: var(--cocoa);
+}
+
+/* Panels. */
+.modal-back {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(74, 53, 64, 0.5);
+  z-index: 20;
+}
+
+.modal {
+  box-sizing: border-box;
+  width: min(92%, calc(var(--u) * 150px));
+  max-height: 86%;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border: 2px solid var(--plum);
+  border-radius: 10px;
+  box-shadow: 0 calc(var(--u) * 2px) 0 rgba(74, 53, 64, 0.35);
+  font-size: max(12px, calc(var(--u) * 5px));
+  color: var(--plum);
+}
+
+.modal--wide {
+  width: min(94%, calc(var(--u) * 220px));
+}
+
+.modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: calc(var(--u) * 2px) calc(var(--u) * 4px);
+  border-bottom: 2px solid var(--plum);
+  background: var(--cream);
+  border-radius: 8px 8px 0 0;
+}
+
+.modal__title {
+  margin: 0;
+  font-size: 1.15em;
+  color: var(--terracotta);
+}
+
+.modal__body {
+  padding: calc(var(--u) * 3px) calc(var(--u) * 4px) calc(var(--u) * 4px);
+  overflow: auto;
+}
+
+.modal__hint {
+  margin: 0 0 0.6em;
+  color: var(--cocoa);
+}
+
+.modal__msg {
+  min-height: 1.3em;
+  margin-top: 0.6em;
+  color: var(--moss);
+  font-weight: 600;
+}
+
+.modal__msg--bad,
+.modal__error {
+  color: var(--berry);
+  font-weight: 600;
+}
+
+.modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0.6em 0;
+}
+
+.note__text {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  font: inherit;
+  color: var(--plum);
+  background: #fff;
+  border: 2px solid var(--plum);
+  border-radius: 6px;
+  resize: vertical;
+}
+
+.note__text--code {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 0.85em;
+}
+
+.note__faces {
+  display: flex;
+  gap: 6px;
+  margin: 0.6em 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 0.6em;
+}
+
+.settings__group h3 {
+  margin: 0.8em 0 0.3em;
+  font-size: 1em;
+}
+
+.fb__note {
+  margin: 0.5em 0;
+  padding: 6px 8px;
+  background: var(--cream);
+  border: 1px solid var(--stone);
+  border-radius: 6px;
+}
+
+.fb__meta {
+  font-size: 0.85em;
+  color: var(--cocoa);
+}
+
+.fb__text {
+  white-space: pre-wrap;
+}
+
+.eod {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.eod th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--cocoa);
+  padding: 2px 0;
+}
+
+.eod td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.eod__good td {
+  color: var(--moss);
+}
+
+.eod__total th,
+.eod__total td {
+  border-top: 2px solid var(--plum);
+  color: var(--plum);
+}
+
+/* Inbox. */
+.inbox {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: calc(var(--u) * 3px);
+  min-height: calc(var(--u) * 80px);
+}
+
+.inbox__list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: calc(var(--u) * 110px);
+  overflow: auto;
+}
+
+.inbox__row {
+  display: grid;
+  gap: 0;
+  padding: 3px 6px;
+  font: inherit;
+  text-align: left;
+  color: var(--plum);
+  background: var(--cream);
+  border: 1px solid var(--stone);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.inbox__row--unread {
+  font-weight: 700;
+  border-color: var(--plum);
+}
+
+.inbox__row--on {
+  background: var(--butter);
+  border-color: var(--plum);
+}
+
+.inbox__from,
+.inbox__when {
+  font-size: 0.85em;
+  color: var(--cocoa);
+  font-weight: 400;
+}
+
+.inbox__reader {
+  padding: 0 4px;
+  max-height: calc(var(--u) * 110px);
+  overflow: auto;
+}
+
+.inbox__meta {
+  font-size: 0.85em;
+  color: var(--cocoa);
+}
+
+.inbox__head {
+  margin: 0.2em 0 0.5em;
+  font-size: 1.1em;
+}
+
+.inbox__text {
+  white-space: pre-wrap;
+  line-height: 1.35;
+}
+
+.inbox__empty {
+  color: var(--cocoa);
+}
+
+.storage-banner {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 3px 12px;
+  background: var(--berry);
+  color: var(--paper);
+  border-radius: 999px;
+  font-size: max(12px, calc(var(--u) * 4.6px));
+  font-weight: 600;
+  text-align: center;
+  max-width: 94%;
+}
+
+@media (max-width: 640px) {
+  .inbox {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Title screen. It sits over the whole window, before the game exists. */
+.title {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  overflow: auto;
+  background: var(--plum);
+  background-image: radial-gradient(circle at 50% 30%, #5d4553 0%, var(--plum) 70%);
+  color: var(--plum);
+}
+
+.title .storage-banner {
+  position: fixed;
+  bottom: 12px;
+  font-size: 14px;
+}
+
+.title__card {
+  width: min(100%, 460px);
+  box-sizing: border-box;
+  padding: 28px 28px 22px;
+  text-align: center;
+  background: var(--paper);
+  border: 3px solid var(--plum);
+  border-radius: 14px;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.3);
+  font-size: 16px;
+}
+
+.title__name {
+  margin: 0;
+  font-size: clamp(34px, 8vw, 52px);
+  letter-spacing: 0.02em;
+  color: var(--terracotta);
+}
+
+.title__tag {
+  margin: 4px 0 18px;
+  color: var(--cocoa);
+}
+
+.title__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.title__detail {
+  margin-top: -4px;
+  color: var(--cocoa);
+  font-size: 0.9em;
+}
+
+.title__row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.title__load {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.title__msg {
+  text-align: center;
+}
+
+.title__keys {
+  margin: 16px 0 0;
+  font-size: 0.85em;
+  color: var(--cocoa);
+  line-height: 1.9;
+}
+
+.title__build {
+  color: var(--slate);
+  font-size: 0.85em;
+}
+
+.btn--big {
+  font-size: 1.15em;
+  padding: 8px 16px;
+  border-width: 2px;
+  border-radius: 10px;
+}
+
+.title .btn {
+  font-size: 16px;
+}
+
+.title .btn--big {
+  font-size: 18px;
+}
+
+.title kbd {
+  font-size: 0.9em;
+}
+
+.title__actions .btn {
+  padding: 6px 14px;
 }

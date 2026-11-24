@@ -16,10 +16,18 @@ export function mountStockStrip(root: HTMLElement, host: GameHost): void {
   strip.setAttribute('aria-label', 'Stock');
   root.appendChild(strip);
   const s = (): typeof host.state => host.state;
+  const paperText = (): string => {
+    const done = s().papers.filter((p) => p.status === 'accepted').length;
+    const open = s().papers.length - done;
+    return open > 0 ? `${done} (+${open})` : String(done);
+  };
   const cells: Cell[] = [
+    { label: 'Funds', title: 'Funds. Core funding arrives at the end of each day', value: () => String(s().funds), warn: () => s().funds < 0 },
+    { label: 'Rep', title: 'Reputation', value: () => String(s().reputation) },
+    { label: 'Papers', title: 'Accepted papers, and papers in review', value: () => paperText() },
     { label: 'Data', title: 'Data from experiments', value: () => String(s().data) },
-    { label: 'Clean flasks', title: 'Clean flasks on the shelf', value: () => String(s().stock.cleanFlasks), warn: () => s().stock.cleanFlasks === 0 },
-    { label: 'Dirty flasks', title: 'Dirty flasks by the sink', value: () => String(s().stock.dirtyFlasks) },
+    { label: 'Clean', title: 'Clean flasks on the shelf', value: () => String(s().stock.cleanFlasks), warn: () => s().stock.cleanFlasks === 0 },
+    { label: 'Dirty', title: 'Dirty flasks by the sink', value: () => String(s().stock.dirtyFlasks) },
     { label: 'Media', title: 'Media bottles in the fridge', value: () => String(s().stock.media), warn: () => s().stock.media === 0 },
     { label: 'Kits', title: 'Assay kits in the fridge', value: () => String(s().stock.assayKits), warn: () => s().stock.assayKits === 0 },
     { label: 'Powder', title: 'Media powder on the shelf', value: () => String(s().stock.mediaPowder) },

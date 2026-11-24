@@ -49,6 +49,7 @@ export class StatusRenderer {
       if (eq.defId === 'incubator') this.drawCultures(state, eq, nowMs);
       else if (eq.defId === 'bin') this.drawBinGauge(state, eq);
       else if (eq.defId === 'fridge' && eq.broken) this.drawWarning(eq, nowMs);
+      else if (eq.defId === 'bay') this.drawBoxes(state, eq);
     }
     const player = state.agents[PLAYER_ID];
     for (const job of Object.values(state.jobs)) {
@@ -128,6 +129,18 @@ export class StatusRenderer {
     this.g.fillStyle(PALETTE.plum, 1).fillRect(x - 1, y - 1, w + 2, h + 2);
     this.g.fillStyle(PALETTE.cream, 1).fillRect(x, y, w, h);
     this.g.fillStyle(full ? PALETTE.berry : PALETTE.mustard, 1).fillRect(x, y, Math.round((Math.min(waste, cap) / cap) * w), h);
+  }
+
+  /** Delivered boxes wait on the bay, drawn as small cardboard squares. */
+  private drawBoxes(state: GameState, eq: Equipment): void {
+    const n = Math.min(state.boxes.length, 4);
+    for (let i = 0; i < n; i++) {
+      const x = eq.x * TILE_SIZE + 2 + (i % 2) * 6;
+      const y = eq.y * TILE_SIZE + 2 + Math.floor(i / 2) * 6;
+      this.g.fillStyle(PALETTE.plum, 1).fillRect(x - 1, y - 1, 7, 7);
+      this.g.fillStyle(PALETTE.warmWood, 1).fillRect(x, y, 5, 5);
+      this.g.fillStyle(PALETTE.cream, 1).fillRect(x + 2, y, 1, 5);
+    }
   }
 
   private drawWarning(eq: Equipment, nowMs: number): void {

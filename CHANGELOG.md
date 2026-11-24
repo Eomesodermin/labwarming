@@ -1,5 +1,35 @@
 # Changelog
 
+## Milestone 3: Money, orders, papers, saving and feedback
+
+- Funds (start 500) and Reputation. Core funding of 100 arrives at the end of each day (18:00). The end-of-day card pauses the game until the player clicks Next day. Salaries join the card in milestone 5.
+- Station menu: E at the desk opens a menu (write paper, revise paper, make presentation, write grant, three orders). E at a broken fridge opens a repair menu (150 Funds). Number keys or clicks pick an entry, Esc closes. Clicking a menu station walks there and opens its menu.
+- Orders: assay kit box 40, media powder box 30, flask box 30, delivered after 30 s to the delivery bay. The bay is a station in the corridor at the bay marker. Put away order takes 6 s, adds what fits and leaves the rest of the box at the bay. A full store gives a reason (the broken fridge says to repair it).
+- Fridge repair clears `broken`. Capacity then follows `tierStat('fridge', 'capacity')`.
+- `fail_fridge_warm` as a toast at 13:00 while a fridge is broken, at most once a day, losing 1 media.
+- Papers: write (50 Data, 20 s), 40 s review, Reviewer 2 letters in the inbox. Paper 1 is accepted, paper 2 needs a minor revision, later papers 60 percent accepted. Revising costs 10 Data and 8 s and then always accepts. Accepted papers pay 250 Funds and 10 Reputation. Make presentation (20 Data, 12 s, +8 Reputation).
+- Seedling Grant: needs 1 accepted paper, written at the desk in 20 s, decided 30 s later (+1,200 Funds, +5 Reputation) with an email.
+- Basic inbox (button, badge and key I) with the welcome email from Prof. Quince, paper letters and the grant decision.
+- Save system (design doc 9): `sim/save/` has `serialize`, `deserialize`, `migrate` and `validate`. The platform layer adds the save envelope, the localStorage keys `labwarming.save` and `labwarming.save.backup`, autosave (end of day, every 60 s, tab hidden or closed, after purchases), the backup copy before each write, fallback to the backup, Export Broken Save and the storage-failure banner. Save codes use the `LABWARM1:` prefix. Settings has Save now, Copy save code, Download save file, Load save code (paste and file picker) and New Game with a second click to confirm.
+- Title screen with Continue, New Game (confirms if a save exists) and Load save code.
+- Feedback (design doc 10): Note button and key F, a note box with three faces that pauses the game, notes stored under `labwarming.feedback` with the context added automatically, and a Feedback tab in Settings with Copy all notes and Download notes. The email button only shows if `FEEDBACK_EMAIL` is set in `content/balance.ts`.
+- All numbers live in `content/economy.ts`, `content/orders.ts`, `content/jobs.ts`, `content/events.ts` and `content/reviewer.ts`.
+
+### Deviations
+
+- `SCHEMA_VERSION` stays at 1. The save system first exists in this milestone, so there are no older saves. `MIGRATIONS` is empty. The migration runner is tested with injected steps, and a test checks there is one step per version below the current one.
+- Put away order happens at the delivery bay, and the stock goes straight into the fridge or shelf. The walk with the box in hand is left for later. The bay is a 1 by 1 equipment piece (`bay`) at the bay marker facing right, so the existing station code handles it.
+- Write grant is a desk job (20 s) that sends the next open grant. There is no separate `ApplyGrant` command. Only the Seedling Grant exists. The other two grants arrive in milestone 6.
+- `PlaceOrder` and `RepairEquipment` only check Funds, not where the player stands. The menu is what limits them to the desk and the fridge. Orders are refused when Funds are below the price, including when Funds are negative (salaries and the negative-funds rule come in milestone 5, where this should be revisited: the doc says orders still work then).
+- `fail_fridge_warm` is scripted, so it fires on Day 1 at 13:00 even though random failures wait 6 minutes. It is toast-only, with no email.
+- The welcome email (`pi_welcome`) is in the inbox from the first tick. The director that fires it as a beat comes in milestone 6.
+- The New Game and Import flows write the replaced save into the backup slot. The next autosave moves the newer game into the backup slot, as the doc's rotation says, so the backup is the previous save rather than a permanent copy. Players are told to use Copy save code first.
+- A save that cannot be read is parked under `labwarming.save.broken` before the main slot is overwritten, so nothing is deleted silently.
+- The game pauses while the end-of-day card, the note box, the inbox and Settings are open. The station menu does not pause.
+- Scripted stats: `Stats` gained `ordersPlaced`, `papersWritten`, `presentations` and `boxesPutAway`.
+- Game keys are ignored while a panel is open. `host.ui` carries that flag (never saved).
+- `host.state` can be replaced as a whole (`replaceState`) for New Game and Load. The scene restarts when that happens.
+
 ## Milestone 2: Stations and hand-jobs
 
 - Job system: jobs live in `state.jobs`, the player works one at a time. A job only progresses while the player stands in front of the station and faces it. Walking away pauses it and keeps progress. Esc stops it (progress kept too).

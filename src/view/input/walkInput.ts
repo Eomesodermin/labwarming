@@ -32,11 +32,18 @@ export function createWalkInput(
   send: (cmd: Command) => void,
   /** The job that Q starts at the faced station (the second one), if there is one. */
   altJob: () => string | undefined,
+  /** True while a panel is open. Game keys are ignored then. */
+  blocked: () => boolean,
+  /** E or Space. The scene decides between a job, the sweet-spot press and a station menu. */
+  onInteract: () => void,
+  /** Letter and function keys that open panels (F for a note, I for the inbox). */
+  onPanelKey: (code: string) => boolean,
 ): WalkInput {
   const held: Dir[] = [];
 
   const onKeyDown = (e: KeyboardEvent): void => {
     if (isTypingTarget(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (blocked()) return;
     const dir = DIR_KEYS[e.code];
     if (dir) {
       e.preventDefault();
@@ -62,7 +69,7 @@ export function createWalkInput(
       case 'KeyE':
       case 'Space':
         e.preventDefault();
-        send({ type: 'Interact' });
+        onInteract();
         break;
       case 'KeyQ': {
         const jobId = altJob();
@@ -73,6 +80,7 @@ export function createWalkInput(
         send({ type: 'CancelJob' });
         break;
       default:
+        if (onPanelKey(e.code)) e.preventDefault();
         break;
     }
   };

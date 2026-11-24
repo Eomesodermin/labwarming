@@ -14,7 +14,7 @@ export function mountToasts(root: HTMLElement, host: GameHost): void {
     t.textContent = text;
     box.appendChild(t);
     while (box.children.length > 4) box.firstElementChild?.remove();
-    setTimeout(() => t.remove(), 2600);
+    setTimeout(() => t.remove(), Math.max(2600, text.length * 55));
   };
 
   host.events.on((e) => {
@@ -27,6 +27,9 @@ export function mountToasts(root: HTMLElement, host: GameHost): void {
         break;
       case 'Toast':
         show(e.text, 'info');
+        break;
+      case 'EmailReceived':
+        show(`New email: ${e.subject}`, 'info');
         break;
       case 'CultureReady':
         show('A culture is ready', 'info');
