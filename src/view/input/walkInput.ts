@@ -28,7 +28,11 @@ export interface WalkInput {
  * Walk mode keys (design doc 3.1). Handlers only queue commands. Held direction keys are
  * re-sent every tick by the scene so that holding a key keeps walking.
  */
-export function createWalkInput(send: (cmd: Command) => void): WalkInput {
+export function createWalkInput(
+  send: (cmd: Command) => void,
+  /** The job that Q starts at the faced station (the second one), if there is one. */
+  altJob: () => string | undefined,
+): WalkInput {
   const held: Dir[] = [];
 
   const onKeyDown = (e: KeyboardEvent): void => {
@@ -55,8 +59,18 @@ export function createWalkInput(send: (cmd: Command) => void): WalkInput {
       case 'Numpad2':
         send({ type: 'SetSpeed', speed: 2 });
         break;
+      case 'KeyE':
       case 'Space':
-        e.preventDefault(); // reserved for "use station" in milestone 2
+        e.preventDefault();
+        send({ type: 'Interact' });
+        break;
+      case 'KeyQ': {
+        const jobId = altJob();
+        if (jobId) send({ type: 'Interact', jobId });
+        break;
+      }
+      case 'Escape':
+        send({ type: 'CancelJob' });
         break;
       default:
         break;

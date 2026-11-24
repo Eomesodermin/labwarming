@@ -55,11 +55,11 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  height: max(30px, calc(var(--u) * 12));
-  padding: 0 max(8px, calc(var(--u) * 4));
+  height: max(30px, calc(var(--u) * 12px));
+  padding: 0 max(8px, calc(var(--u) * 4px));
   background: color-mix(in srgb, var(--paper) 92%, transparent);
   border-bottom: 2px solid var(--plum);
-  font-size: max(12px, calc(var(--u) * 5.5));
+  font-size: max(12px, calc(var(--u) * 5.5px));
   user-select: none;
 }
 
@@ -134,3 +134,220 @@ body {
   }
 }
 [hidden] { display: none !important; }
+
+/* Stock strip, under the top bar. */
+.stockstrip {
+  position: absolute;
+  top: max(30px, calc(var(--u) * 12px));
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px max(8px, calc(var(--u) * 4px));
+  padding: max(2px, calc(var(--u) * 1px)) max(8px, calc(var(--u) * 4px));
+  background: color-mix(in srgb, var(--cream) 92%, transparent);
+  border-bottom: 1px solid var(--plum);
+  font-size: max(11px, calc(var(--u) * 4.6px));
+  user-select: none;
+}
+
+.stat {
+  white-space: nowrap;
+}
+
+.stat__label {
+  color: var(--cocoa);
+}
+
+.stat__value {
+  font-variant-numeric: tabular-nums;
+}
+
+.stat--warn .stat__value {
+  color: #a8516e;
+}
+
+/* The sticky note. */
+.todo {
+  position: absolute;
+  top: calc(max(30px, calc(var(--u) * 12px)) + max(22px, calc(var(--u) * 10px)));
+  right: max(8px, calc(var(--u) * 4px));
+  width: min(46%, calc(var(--u) * 92px));
+  box-sizing: border-box;
+  padding: calc(var(--u) * 3px) calc(var(--u) * 4px) calc(var(--u) * 4px);
+  background: var(--butter);
+  border: 1px solid var(--mustard);
+  border-radius: 2px;
+  box-shadow: calc(var(--u) * 1px) calc(var(--u) * 1.5px) 0 rgba(74, 53, 64, 0.25);
+  transform: rotate(1.2deg);
+  font-size: max(11px, calc(var(--u) * 4.6px));
+  line-height: 1.25;
+  pointer-events: none;
+}
+
+.todo__title {
+  font-weight: 700;
+  color: var(--cocoa);
+  margin-bottom: 0.2em;
+}
+
+.todo ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.todo__item {
+  display: flex;
+  gap: 0.5em;
+  margin: 0.15em 0;
+}
+
+.todo__item--done > span:last-child {
+  text-decoration: line-through;
+  color: var(--cocoa);
+}
+
+.todo__item--now {
+  font-weight: 700;
+}
+
+.todo__hint {
+  font-weight: 400;
+  color: var(--cocoa);
+}
+
+.todo__box {
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+  box-sizing: border-box;
+  border: 1.5px solid var(--plum);
+  border-radius: 3px;
+  background: var(--paper);
+  font-size: 0.9em;
+  line-height: 1em;
+  text-align: center;
+  color: var(--moss);
+  font-weight: 700;
+}
+
+.todo__foot {
+  margin-top: 0.3em;
+  font-weight: 700;
+  color: var(--moss);
+}
+
+/* Station prompt, bottom centre. */
+.prompt {
+  position: absolute;
+  left: 50%;
+  bottom: max(10px, calc(var(--u) * 5px));
+  transform: translateX(-50%);
+  min-width: calc(var(--u) * 70px);
+  max-width: 90%;
+  box-sizing: border-box;
+  padding: calc(var(--u) * 2.5px) calc(var(--u) * 4px);
+  background: var(--paper);
+  border: 2px solid var(--plum);
+  border-radius: 8px;
+  font-size: max(12px, calc(var(--u) * 5px));
+  pointer-events: none;
+}
+
+.prompt__title {
+  font-weight: 700;
+  color: var(--terracotta);
+}
+
+.prompt__info {
+  font-weight: 400;
+  color: var(--cocoa);
+  margin-left: 0.5em;
+}
+
+.prompt__line--blocked {
+  color: var(--slate);
+}
+
+.prompt__reason {
+  color: #a8516e;
+  font-weight: 600;
+  margin-left: 0.4em;
+}
+
+.prompt__work {
+  margin-top: 0.2em;
+  color: var(--moss);
+  font-weight: 600;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.3em;
+  padding: 0 0.3em;
+  box-sizing: border-box;
+  text-align: center;
+  font: inherit;
+  font-weight: 700;
+  background: var(--cream);
+  border: 1px solid var(--plum);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  color: var(--plum);
+}
+
+/* Toasts sit above the prompt. */
+.toasts {
+  position: absolute;
+  left: 50%;
+  bottom: calc(max(10px, calc(var(--u) * 5px)) + calc(var(--u) * 38px));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: var(--paper);
+  border: 2px solid var(--plum);
+  font-size: max(12px, calc(var(--u) * 5px));
+  font-weight: 700;
+  animation: toast-in 0.18s ease-out;
+  text-align: center;
+}
+
+.toast--good {
+  background: var(--mustard);
+}
+
+.toast--warn {
+  background: var(--cream);
+  color: #a8516e;
+}
+
+@keyframes toast-in {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
+/* Read-only overlays never swallow clicks meant for the game. */
+#ui-root > .stockstrip,
+#ui-root > .todo,
+#ui-root > .prompt,
+#ui-root > .toasts {
+  pointer-events: none;
+}

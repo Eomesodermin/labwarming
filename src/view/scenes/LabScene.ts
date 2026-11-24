@@ -4,11 +4,13 @@ import { MAP_H, MAP_W, TILE_SIZE } from '../../content/map';
 import type { GameHost } from '../../host';
 import { PLAYER_ID, type Command } from '../../sim/commands';
 import { isWalkable } from '../../sim/grid';
+import { stationPrompt } from '../../sim/selectors';
 import { step } from '../../sim/step';
 import { PALETTE } from '../art/palette';
 import { createWalkInput, type WalkInput } from '../input/walkInput';
 import { AgentRenderer, agentWorldPos } from '../renderers/agentRenderer';
 import { EquipmentRenderer } from '../renderers/equipmentRenderer';
+import { StatusRenderer } from '../renderers/statusRenderer';
 import { TileRenderer } from '../renderers/tileRenderer';
 
 export const VIEW_W = 480;
@@ -23,6 +25,7 @@ export class LabScene extends Phaser.Scene {
   private tiles!: TileRenderer;
   private equipment!: EquipmentRenderer;
   private agents!: AgentRenderer;
+  private status!: StatusRenderer;
   private cameraTarget!: Phaser.GameObjects.Zone;
   private acc = 0;
 
@@ -40,6 +43,7 @@ export class LabScene extends Phaser.Scene {
     this.tiles = new TileRenderer(this);
     this.equipment = new EquipmentRenderer(this);
     this.agents = new AgentRenderer(this);
+    this.status = new StatusRenderer(this);
     this.tiles.sync(state);
     this.equipment.sync(state);
 
@@ -54,7 +58,10 @@ export class LabScene extends Phaser.Scene {
     const p = this.cameraTarget;
     cam.centerOn(p.x, p.y);
 
-    this.input_ = createWalkInput((cmd) => this.host.send(cmd));
+    this.input_ = createWalkInput(
+      (cmd) => this.host.send(cmd),
+      () => stationPrompt(this.host.state)?.options[1]?.jobId,
+    );
     this.input.mouse?.disableContextMenu();
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!pointer.leftButtonDown()) return;
@@ -95,6 +102,7 @@ export class LabScene extends Phaser.Scene {
 
     this.tiles.sync(state);
     this.equipment.sync(state);
+    this.status.sync(state, this.time.now);
     this.syncAgents(state.clock.speed === 0 ? 0 : this.acc / TICK_MS);
   }
 
