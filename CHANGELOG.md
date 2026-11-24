@@ -1,5 +1,40 @@
 # Changelog
 
+## Milestone 7: Media Facility, Lab Warming goals, party, feedback prompts
+
+### Built
+- Media Facility room (rep 30, 800 Funds): needs a media prep unit (400 Funds, cannot be sold) and brings a Media Technician (salary 50, no fee, not hireable or dismissable). The tech makes bottles from Media Powder (6 per powder, 15 s each) up to a target set with a slider (2 to 20, default 8) in the new Lab panel or the prep unit menu.
+- Auto-reorder (on by default): orders a Media Powder box when powder drops below 2 and nothing is on order; toggle in the Lab panel and the unit menu.
+- Visitors arrive every 60 to 90 s, first after 30 s, buy 2 bottles at 15 Funds each from the stock above a 4 bottle reserve, and leave a short line.
+- Lab Warming goals (design doc 12.1): 4 rooms, 2 staff, facility open, 1 PI request, 1 grant. `goals` state records the tick each is first reached. Goals ring button in the top bar and a Goals tab in the Lab panel.
+- Party: when all five goals are met, a cake event fires once with a party card (group photo, confetti, goal times). 
+- Guided to-do note now has 14 steps (media, waste, fridge, order, put away, request, paper, seedling, room, hire), compact and moved bottom-left so it no longer covers plot C.
+- Feedback prompts at the party and at 30 minutes (once each). The feedback report gains a line "Checklist goals reached" with minutes per goal; Settings > Feedback shows the same summary.
+- Save schema 5 with a 4 to 5 migration (facility defaults, empty goals, stats counters).
+- Pacing bots (`tests/balance/bot.ts`): scripted headless bots that play through player-like commands (walk, face, interact, buy, build, hire). Average bot ticks all five goals inside 10,800 to 16,800 ticks; slow bot (60% efficiency) before 24,000; neither gets stuck. Tests in `tests/balance/pacing.test.ts`.
+- Tests: facility, technician, target slider, auto-reorder, visitors buying, each goal, party once, report goal times, migration, pacing bots.
+
+### Balance changes (content tables only)
+- `PAPER.data` 50 -> 100
+- `PAPER.reviseData` 10 -> 20
+- `PAPER.panelData` 60 -> 120
+- `PRESENTATION.data` 20 -> 40
+- Reason: the greedy bot finished all goals in 10.5 to 12.5 min. Doubling Data costs puts the first paper near minute 9 to 10, as the doc's timeline implies. Rejected: raising the media rep gate (not binding), paper 120 (too grindy early), longer review time.
+
+### Deviations and notes
+- The media technician is a staff role (`mediatech`) outside the hireable list, spawned when the facility opens.
+- The prep unit cannot be sold, so the room cannot be left open without it.
+- Goal "staff" counts hires (`stats.hires`), so the media tech does not count.
+- Party card uses a drawn group photo (CSS shapes), not art assets.
+- Skipped per scope: art, sound, Office polish, tier 3 polish.
+
+### Notes for M8
+- Needs real sprites for the media prep unit and `char.mediatech` (currently flat colour).
+- No sound for bottle making, visitor sales or the party.
+- Data cost doubling should be re-checked with real players; the 30 minute feedback prompt gives the first real timings.
+- Bundle is 1.37 MB; consider code splitting.
+
+
 ## Milestone 6: Events, PI, grants with deadlines, inspection
 
 ### Built
