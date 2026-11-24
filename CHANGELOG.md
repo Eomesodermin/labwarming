@@ -1,5 +1,35 @@
 # Changelog
 
+## Milestone 6: Events, PI, grants with deadlines, inspection
+
+### Built
+- Event director: scripted beats plus a weighted random pool, driven by data rows in `src/content/events.ts` (declarative conditions and effects, interpreted by `eventCore.ts`). Own RNG stream, cooldowns in game days, deterministic.
+- Full inbox: unread badge, choices on emails, request chips, "needs an answer" tag.
+- PI requests (Prof. Quince) that set and clear `flags.piRequest`, with a friendly miss email and +50 Funds when they expire.
+- PI, failure and admin events from section 6.3: contamination, autoclave break (coax or call the engineer), lost orders and substitutions, warm fridge, full bins, walkthrough, fire drill, seminar pizza, waste rules.
+- Quince, Inspector Tock and Bodo as walking characters; cake with a mood and energy boost.
+- Equipment Call and Foundation Grant with countdown chips, nags on the last two days, portal crash (deadline +1 day, flat 80% payout), awards that bring cake.
+- Inspection announced a day ahead, four checks, 50 Funds and 2 Rep per pass, bonus for all four, gold star.
+- Save schema 4 with a 3 to 4 migration (past scripted beats are marked fired).
+- Tests for the director, requests, failures, grants, inspection, admin events and migration.
+
+### Deviations and notes
+- "No failure in the first 6 minutes" applies to random and natural failures. The scripted warm fridge at Day 1 13:00 is exempt, as in the doc's own timeline.
+- The 1.5 day request window is 3,600 ticks, so the first deadline lands around Day 3 14:00.
+- The random pool opens only after the first scripted request has fired.
+- Lost boxes are collected by walking onto the tile; the box then joins the delivery bay.
+- The fire drill sends staff to corridor row 10. The engineer is a timer, not a walking character.
+- `writeGrant` applies to the soonest-deadline eligible grant. A crashed payout stays flat at 80%.
+- Grant award emails now use the `grant_award` kind and event. `EVENT_ROWS`, `sendEmailRow` and `FRIDGE_WARM` were removed.
+- The old contamination toast was removed because the email toasts. Name tags above visitors were removed (unreadable at small size).
+- Mood recalculates early via `flags.moodNow`. Recurring beats (inspection every 8 days) only fire on their own day.
+- Not built (skip list): Media Facility, visitors buying media, checklist party, sound.
+
+### Notes for M7
+- Goals can read `stats.requestsDone`, `requestsMissed`, `inspectionsDone`, `goldStar`, and `grantCalls[id].deadlineDay` (an application during an extended deadline counts).
+- The `'visitor'` AgentKind is ready for Media Facility visitors; the room is still `available: false`.
+- `DIRECTOR` pool and `fireEvent` can be reused for feedback prompts and party events.
+
 ## Milestone 5: Staff
 
 - Hire panel and staff panel (button and key T, does not pause): three candidates per role refreshed each morning (drawn from their own seeded stream), traits, fees, salaries, lock reasons, Part ways with a confirm click. Live Energy, Mood and current job per person.
