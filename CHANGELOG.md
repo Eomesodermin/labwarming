@@ -1,5 +1,28 @@
 # Changelog
 
+## Milestone 5: Staff
+
+- Hire panel and staff panel (button and key T, does not pause): three candidates per role refreshed each morning (drawn from their own seeded stream), traits, fees, salaries, lock reasons, Part ways with a confirm click. Live Energy, Mood and current job per person.
+- Roles: technician (Reputation 10), wash-up crew (own a Wash-up Room), cleaner (own 2 rooms), up to 2 each. Numbers in `content/staff.ts`.
+- Staff AI (`sim/systems/staff.ts`): idle staff think every 5 ticks, take the first available job in their role priority, nearest station by path first, and skip stations with no reachable front tile. No random numbers, so it is deterministic.
+- Reservations: a job holds its station and inputs from the moment staff pick it. The player may take a station staff are only walking to (they pick again); a station where someone is working refuses with their name. Resource counts (flasks, cultures, kits and so on) include jobs in flight.
+- Energy (-1 per 4 s of work, break at 20 or below after the current job), breaks (coffee machine job, 20 s or 12 s at tier 2, or 40 s resting in place without one), Mood formula and speed multiplier, all 8 traits.
+- Salaries on the end-of-day card, per person, with the covered-by-Prof.-Quince line. Negative funds: floor -500; rooms, equipment, hires and repairs refused while negative; orders still work down to -500.
+- Mood and break icons over heads (rain cloud, coffee cup). Stage A shapes per role.
+- Save schema 3 with a 2 to 3 migration (agents get `staff`, state gets `candidates`) and tests. M4 saves load; their candidates are drawn on the first tick.
+- Tests: `tests/sim/staff.test.ts` and migration tests in `save.test.ts`.
+
+### Deviations and notes
+
+- Coffee machine Mood is +10 at any tier (design doc 4.5); the tier 2 "Mood +10" in 4.2 is read as the same bonus. Content stat is now `[10, 10]`.
+- PI request and cake Mood effects read `flags.piRequest` (true) and `flags.cakeTicks` (a countdown). Nothing sets them yet; M6 should set them and count `cakeTicks` down.
+- Staff do not use sweet spots, toasts or the player's coffee boost. Staff jobs do not consume the `washBoost` flag.
+- AI thresholds (not in the doc): the cleaner takes waste first at a half-full bin and the wash-up crew starts the autoclave first at 4 dirty flasks; otherwise those are fallbacks when idle. Without any sink the autoclave has no threshold.
+- Without a technician or cleaner, a full bin can still stall experiments; that is the player's or a cleaner's job.
+- Hiring also needs non-negative Funds. A hired person's name leaves the candidate pool while employed.
+- Placement refuses tiles where any agent stands, not only the player.
+- Notes for M6: staff idle at the entrance or wherever they finished; visitors, Prof. Quince and Tock can reuse `Agent` (add kinds). `EndOfDay` now carries `salaries`, `salaryTotal` and `covered`.
+
 ## Milestone 4: Build mode, rooms and upgrades
 
 - Build mode (B or the Build button): pauses the game (kept paused even if Resume is pressed), zooms the map out to sit left of a side panel with Rooms, Equipment and Decor tabs, draws the tile grid, keep-clear marks on every door and the tile inside it, and room names.
