@@ -37,6 +37,10 @@ SPRITES['char.player'] = { kind: 'shape', fill: 'terracotta', text: 'plum', labe
 SPRITES['char.technician'] = { kind: 'shape', fill: 'teal', text: 'plum', label: '' };
 SPRITES['char.washup'] = { kind: 'shape', fill: 'sky', text: 'plum', label: '' };
 SPRITES['char.cleaner'] = { kind: 'shape', fill: 'sage', text: 'plum', label: '' };
+SPRITES['char.pi'] = { kind: 'shape', fill: 'berry', text: 'paper', label: '' };
+SPRITES['char.inspector'] = { kind: 'shape', fill: 'slate', text: 'paper', label: '' };
+SPRITES['char.courier'] = { kind: 'shape', fill: 'mustard', text: 'plum', label: '' };
+SPRITES['char.visitor'] = { kind: 'shape', fill: 'dustyRose', text: 'plum', label: '' };
 
 export function equipmentSpriteKey(defId: string, tier: number): string {
   return SPRITES[`equip.${defId}.t${tier}`] ? `equip.${defId}.t${tier}` : `equip.${defId}.t1`;

@@ -349,6 +349,7 @@ kbd {
 /* Read-only overlays never swallow clicks meant for the game. */
 #ui-root > .stockstrip,
 #ui-root > .todo,
+#ui-root > .chips,
 #ui-root > .prompt,
 #ui-root > .toasts {
   pointer-events: none;
@@ -843,6 +844,7 @@ kbd {
 
 /* Build mode: the side panel on the right. The map is zoomed to fit to its left. */
 .is-building .todo,
+.is-building .chips,
 .is-building .prompt {
   display: none;
 }
@@ -1232,4 +1234,154 @@ kbd {
 
 .eod__covered {
   margin: 0.6em 0 0;
+}
+
+/* Request, grant and inspection chips, under the stock strip on the left. */
+.chips {
+  position: absolute;
+  top: calc(max(30px, calc(var(--u) * 12px)) + max(22px, calc(var(--u) * 10px)) + var(--u) * 62px);
+  right: max(8px, calc(var(--u) * 4px));
+  width: min(46%, calc(var(--u) * 92px));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: calc(var(--u) * 1.5px);
+  font-size: max(11px, calc(var(--u) * 4.4px));
+  line-height: 1.2;
+}
+
+.chip2 {
+  display: grid;
+  gap: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: calc(var(--u) * 1px) calc(var(--u) * 3px);
+  background: color-mix(in srgb, var(--paper) 95%, transparent);
+  border: 1px solid var(--plum);
+  border-left-width: calc(var(--u) * 2px);
+  border-radius: 6px;
+  box-shadow: 0 1px 0 rgba(74, 53, 64, 0.25);
+}
+
+.chip2 span {
+  color: var(--cocoa);
+}
+
+.chip2--request {
+  border-left-color: var(--terracotta);
+}
+
+.chip2--grant {
+  border-left-color: var(--teal);
+}
+
+.chip2--inspection {
+  border-left-color: var(--slate);
+}
+
+.chip2--warn {
+  background: color-mix(in srgb, var(--butter) 94%, transparent);
+}
+
+/* Inspection checklist and Tock's sticky notes. */
+.checklist {
+  box-sizing: border-box;
+  padding: calc(var(--u) * 2.5px) calc(var(--u) * 3.5px) calc(var(--u) * 3px);
+  background: var(--paper);
+  border: 1px solid var(--stone);
+  border-radius: 2px;
+  box-shadow: calc(var(--u) * 1px) calc(var(--u) * 1.5px) 0 rgba(74, 53, 64, 0.25);
+  transform: rotate(-0.8deg);
+}
+
+.checklist--notes {
+  background: var(--dusty-rose);
+  border-color: var(--berry);
+}
+
+.checklist__title {
+  font-weight: 700;
+  color: var(--cocoa);
+  margin-bottom: 0.15em;
+}
+
+.checklist ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.checklist li {
+  display: flex;
+  gap: 0.5em;
+  align-items: flex-start;
+  margin: 0.15em 0;
+}
+
+.checklist small {
+  display: block;
+  color: var(--cocoa);
+}
+
+.checklist__box {
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+  box-sizing: border-box;
+  border: 1px solid var(--plum);
+  border-radius: 2px;
+  text-align: center;
+  line-height: 1em;
+  background: var(--cream);
+  color: var(--moss);
+  font-weight: 700;
+}
+
+.checklist__ok {
+  color: var(--cocoa);
+  text-decoration: line-through;
+}
+
+/* The inbox: answers and the request chip inside an email. */
+.inbox__ask {
+  margin-left: 0.4em;
+  padding: 0 0.5em;
+  border-radius: 999px;
+  background: var(--terracotta);
+  color: var(--paper);
+  font-size: 0.8em;
+  font-weight: 700;
+}
+
+.inbox__choices {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--u) * 1.5px);
+  margin-top: 0.7em;
+}
+
+.inbox__chose {
+  color: var(--cocoa);
+  font-style: italic;
+}
+
+.reqchip {
+  display: inline-block;
+  margin-top: 0.7em;
+  padding: 1px 10px;
+  border: 1px solid var(--plum);
+  border-radius: 999px;
+  font-weight: 700;
+  background: var(--butter);
+}
+
+.reqchip--done {
+  background: var(--sage);
+}
+
+.reqchip--missed,
+.reqchip--closed {
+  background: var(--cream);
+  color: var(--cocoa);
 }

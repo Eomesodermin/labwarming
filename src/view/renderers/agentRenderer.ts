@@ -48,6 +48,31 @@ export class AgentRenderer {
       sprite.setPosition(Math.round(p.x), Math.round(p.y));
       sprite.setDepth(p.y + 1);
       if (a.staff) this.drawIcon(state, a, Math.round(p.x), Math.round(p.y));
+      else if (a.kind !== 'player') this.drawVisitor(state, a, Math.round(p.x), Math.round(p.y));
+    }
+  }
+
+  /** Quince, Tock, Bodo and guests: a prop each (cake, clipboard, box). */
+  private drawVisitor(state: GameState, a: Agent, x: number, y: number): void {
+    const g = this.icons;
+    if (a.kind === 'inspector') {
+      // A clipboard on the side they face.
+      g.fillStyle(PALETTE.plum).fillRect(x + 5, y - 14, 6, 8);
+      g.fillStyle(PALETTE.paper).fillRect(x + 6, y - 13, 4, 6);
+      g.fillStyle(PALETTE.slate).fillRect(x + 6, y - 11, 4, 1).fillRect(x + 6, y - 9, 3, 1);
+    } else if (a.kind === 'courier') {
+      g.fillStyle(PALETTE.plum).fillRect(x - 5, y - 24, 10, 8);
+      g.fillStyle(PALETTE.warmWood).fillRect(x - 4, y - 23, 8, 6);
+      g.fillStyle(PALETTE.cream).fillRect(x - 1, y - 23, 2, 6);
+    } else if (a.kind === 'pi') {
+      const visit = state.director.visits.find((v) => v.agentIds[0] === a.id);
+      if (visit?.kind === 'cake' && !visit.arrived && !visit.leaving) {
+        // Carrying the cake in.
+        g.fillStyle(PALETTE.plum).fillRect(x - 6, y - 17, 12, 8);
+        g.fillStyle(PALETTE.paper).fillRect(x - 5, y - 16, 10, 2);
+        g.fillStyle(PALETTE.dustyRose).fillRect(x - 5, y - 14, 10, 4);
+        g.fillStyle(PALETTE.mustard).fillRect(x - 1, y - 20, 2, 3);
+      }
     }
   }
 
@@ -57,7 +82,12 @@ export class AgentRenderer {
     if (!st) return;
     const g = this.icons;
     const top = y - 28;
-    if (isOnBreak(state, a) || st.energy <= ENERGY.breakAt) {
+    if (state.director.drill) {
+      // The fire alarm test: an ice bucket each.
+      g.fillStyle(PALETTE.plum).fillRect(x - 5, top - 1, 10, 9);
+      g.fillStyle(PALETTE.sky).fillRect(x - 4, top, 8, 7);
+      g.fillStyle(PALETTE.paper).fillRect(x - 3, top, 3, 2).fillRect(x + 1, top + 1, 2, 2);
+    } else if (isOnBreak(state, a) || st.energy <= ENERGY.breakAt) {
       g.fillStyle(PALETTE.plum).fillRect(x - 4, top - 1, 8, 8);
       g.fillStyle(PALETTE.paper).fillRect(x - 3, top, 6, 6);
       g.fillStyle(PALETTE.terracotta).fillRect(x - 3, top + 1, 6, 2);

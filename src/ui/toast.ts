@@ -34,9 +34,6 @@ export function mountToasts(root: HTMLElement, host: GameHost): void {
       case 'CultureReady':
         show('A culture is ready', 'info');
         break;
-      case 'CultureContaminated':
-        show('Something is growing in the incubator. It is not your cells. It seems happy.', 'warn');
-        break;
       default:
         break;
     }

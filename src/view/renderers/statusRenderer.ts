@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { TICKS_PER_SECOND } from '../../content/balance';
 import { tierStat } from '../../content/equipment';
-import { TILE_SIZE } from '../../content/map';
+import { PLOTS, TILE_SIZE } from '../../content/map';
 import { footprintSize } from '../../sim/grid';
 import { slotsOf } from '../../sim/systems/cultures';
 import { wasteCapacity, plotOf } from '../../sim/stock';
@@ -49,8 +49,14 @@ export class StatusRenderer {
       else if (eq.defId === 'bin') this.drawBinGauge(state, eq);
       else if (eq.defId === 'fridge' && eq.broken) this.drawWarning(eq, nowMs);
       else if (eq.defId === 'bay') this.drawBoxes(state, eq);
+      else if (eq.defId === 'autoclave' && eq.broken) this.drawWarning(eq, nowMs);
       else if (eq.defId === 'autoclave' && eq.cycle) this.drawCycle(eq, eq.cycle.ticksLeft);
+      if (eq.defId === 'autoclave' && eq.broken && eq.repairTicks) this.drawTimer(eq, eq.repairTicks, 300, PALETTE.teal);
+      if (eq.defId === 'bench' && eq.outTicks) this.drawTimer(eq, eq.outTicks, 200, PALETTE.sky);
     }
+    for (const b of state.lostBoxes) this.drawLostBox(b.x, b.y, nowMs);
+    if (state.director.cake) this.drawCake(state.director.cake.x, state.director.cake.y, nowMs);
+    if (state.flags['goldStar'] === true) this.drawStar(state);
     for (const job of Object.values(state.jobs)) {
       const eq = state.equipment[job.stationId];
       if (!eq || job.progressTicks <= 0) continue;
@@ -152,6 +158,59 @@ export class StatusRenderer {
       this.g.fillStyle(PALETTE.plum, 1).fillRect(x - 1, y - 1, 7, 7);
       this.g.fillStyle(PALETTE.warmWood, 1).fillRect(x, y, 5, 5);
       this.g.fillStyle(PALETTE.cream, 1).fillRect(x + 2, y, 1, 5);
+    }
+  }
+
+  /** A small countdown bar over a machine that is out of use: updates, or the engineer on the way. */
+  private drawTimer(eq: Equipment, left: number, total: number, colour: number): void {
+    const w = 22;
+    const h = 4;
+    const { x, y } = gaugeOrigin(eq, w, h);
+    this.g.fillStyle(PALETTE.plum, 1).fillRect(x - 1, y - 1, w + 2, h + 2);
+    this.g.fillStyle(PALETTE.cream, 1).fillRect(x, y, w, h);
+    this.g.fillStyle(colour, 1).fillRect(x, y, Math.max(1, Math.round((1 - Math.min(1, left / total)) * w)), h);
+  }
+
+  /** A box in the corridor with a question mark bobbing over it. */
+  private drawLostBox(tx: number, ty: number, nowMs: number): void {
+    const g = this.g;
+    const x = tx * TILE_SIZE + 3;
+    const y = ty * TILE_SIZE + 5;
+    g.fillStyle(PALETTE.plum, 1).fillRect(x - 1, y - 1, 12, 10);
+    g.fillStyle(PALETTE.warmWood, 1).fillRect(x, y, 10, 8);
+    g.fillStyle(PALETTE.cream, 1).fillRect(x + 4, y, 2, 8);
+    const bob = Math.floor(nowMs / 350) % 2;
+    const qx = x + 2;
+    const qy = y - 11 - bob;
+    g.fillStyle(PALETTE.plum, 1).fillRect(qx - 1, qy - 1, 8, 10);
+    g.fillStyle(PALETTE.butter, 1).fillRect(qx, qy, 6, 8);
+    g.fillStyle(PALETTE.plum, 1).fillRect(qx + 1, qy + 1, 4, 1).fillRect(qx + 4, qy + 2, 1, 2).fillRect(qx + 2, qy + 4, 2, 1).fillRect(qx + 2, qy + 6, 1, 1);
+  }
+
+  /** Quince's cake on the corridor floor: a plate, two layers and a candle that flickers. */
+  private drawCake(tx: number, ty: number, nowMs: number): void {
+    const g = this.g;
+    const x = tx * TILE_SIZE + 2;
+    const y = ty * TILE_SIZE + 6;
+    g.fillStyle(PALETTE.plum, 1).fillRect(x - 1, y - 1, 14, 11);
+    g.fillStyle(PALETTE.paper, 1).fillRect(x, y + 7, 12, 2);
+    g.fillStyle(PALETTE.cocoa, 1).fillRect(x + 1, y + 3, 10, 4);
+    g.fillStyle(PALETTE.dustyRose, 1).fillRect(x + 1, y, 10, 3);
+    g.fillStyle(PALETTE.butter, 1).fillRect(x + 5, y - 4, 2, 4);
+    if (Math.floor(nowMs / 250) % 2 === 0) g.fillStyle(PALETTE.mustard, 1).fillRect(x + 5, y - 6, 2, 2);
+    else g.fillStyle(PALETTE.terracotta, 1).fillRect(x + 5, y - 5, 2, 1);
+  }
+
+  /** The gold star Tock puts on the lab door. */
+  private drawStar(state: GameState): void {
+    const g = this.g;
+    for (const p of PLOTS) {
+      if (state.plots[p.id]?.roomType !== 'lab' || !state.plots[p.id]?.owned) continue;
+      const cx = p.door.x * TILE_SIZE + 8;
+      const cy = p.door.y * TILE_SIZE + 3;
+      g.fillStyle(PALETTE.plum, 1).fillRect(cx - 6, cy - 1, 12, 4).fillRect(cx - 2, cy - 5, 4, 12).fillRect(cx - 4, cy - 3, 8, 8);
+      g.fillStyle(PALETTE.mustard, 1).fillRect(cx - 5, cy, 10, 2).fillRect(cx - 1, cy - 4, 2, 10).fillRect(cx - 3, cy - 2, 6, 6);
+      g.fillStyle(PALETTE.butter, 1).fillRect(cx - 1, cy - 1, 2, 2);
     }
   }
 
