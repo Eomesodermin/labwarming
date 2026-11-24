@@ -62,10 +62,10 @@ export const ROOMS: Record<RoomTypeId, RoomDef> = {
     name: 'Media Facility',
     cost: 800,
     unlockRep: 30,
-    available: false,
-    allows: ['fridge', 'shelf', 'bin'],
+    available: true,
+    allows: ['mediaprep', 'fridge', 'shelf', 'bin'],
     floor: 'sage',
-    note: 'Opens in a later update.',
+    note: 'Needs a media prep unit to open. A media technician comes with it.',
   },
 };
 

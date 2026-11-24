@@ -1,5 +1,6 @@
 import { SCHEMA_VERSION, TICKS_PER_DAY } from '../../content/balance';
 import { GRANTS } from '../../content/economy';
+import { FACILITY } from '../../content/facility';
 import { SCRIPTED_BEATS, hourToTick } from '../../content/events';
 import { seedToState } from '../rng';
 
@@ -109,6 +110,24 @@ export const MIGRATIONS: readonly Migration[] = [
       if (typeof stats === 'object' && stats !== null) {
         const st = stats as Raw;
         for (const k of ['contaminations', 'requestsDone', 'requestsMissed', 'inspectionsDone']) if (st[k] === undefined) st[k] = 0;
+      }
+      return state;
+    },
+  },
+  {
+    // Version 4 to 5 (milestone 7): the Media Facility settings, the Lab Warming list and four counters.
+    // Goals that are already met are ticked on the next tick, at the play time of the load.
+    from: 4,
+    run: (state) => {
+      state['facility'] = { target: FACILITY.targetDefault, autoReorder: FACILITY.autoReorderDefault, batchLeft: 0, visitorTicks: -1, earned: 0 };
+      state['goals'] = { reached: {}, partyDone: false, prompted: [] };
+      const agents = (state['agents'] ?? {}) as Record<string, Raw>;
+      const hired = Object.values(agents).filter((a) => typeof a === 'object' && a !== null && a['staff'] !== null && a['staff'] !== undefined).length;
+      const stats = state['stats'];
+      if (typeof stats === 'object' && stats !== null) {
+        const st = stats as Raw;
+        if (st['hires'] === undefined) st['hires'] = hired;
+        for (const k of ['prepBottles', 'mediaSold', 'visitorsServed']) if (st[k] === undefined) st[k] = 0;
       }
       return state;
     },

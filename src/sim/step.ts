@@ -6,6 +6,8 @@ import { directorSystem } from './systems/director';
 import { endOfDay } from './systems/economy';
 import { grantsSystem } from './systems/grants';
 import { inspectionSystem } from './systems/inspection';
+import { facilitySystem } from './systems/facility';
+import { goalsSystem } from './systems/goals';
 import { lostBoxSystem, visitsSystem } from './systems/visits';
 import { ordersSystem } from './systems/orders';
 import { papersSystem } from './systems/papers';
@@ -24,8 +26,8 @@ import { needsSystem, staffAiSystem, staffWorkSystem } from './systems/staff';
  * System order (design doc 8.6): commands, clock, director, orders, cultures, machines,
  * staffAi, movement, jobs, needs, cleanliness, papers, grants, visitors, inspection,
  * economy, goals, tutorial. Only the systems that exist so far are called, in that order (clock,
- * director, orders, cultures, machines, staffAi, movement, visitors, jobs, staff work, needs, papers,
- * grants, inspection, economy).
+ * director, orders, cultures, machines, facility, staffAi, movement, visitors, jobs, staff work, needs,
+ * papers, grants, inspection, economy, goals). The tutorial note is a selector over state, so it has no system.
  */
 export function step(state: GameState, commands: readonly Command[]): SimEvent[] {
   const events: SimEvent[] = [];
@@ -37,6 +39,7 @@ export function step(state: GameState, commands: readonly Command[]): SimEvent[]
   ordersSystem(state, events);
   culturesSystem(state, events);
   machinesSystem(state, events);
+  facilitySystem(state, events);
   staffAiSystem(state);
   movementSystem(state);
   visitsSystem(state, events);
@@ -48,5 +51,6 @@ export function step(state: GameState, commands: readonly Command[]): SimEvent[]
   grantsSystem(state, events);
   inspectionSystem(state, events);
   if (dayEnded) endOfDay(state, endedDay, events);
+  goalsSystem(state, events);
   return events;
 }

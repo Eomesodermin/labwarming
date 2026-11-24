@@ -31,7 +31,7 @@ export function validateState(raw: unknown): GameState {
     need(isNum((s['stock'] as Raw)[k]), `stock.${k}`);
   }
 
-  for (const k of ['plots', 'equipment', 'agents', 'jobs', 'grants', 'grantCalls', 'stats', 'flags', 'director']) need(isObj(s[k]), `${k} is missing`);
+  for (const k of ['plots', 'equipment', 'agents', 'jobs', 'grants', 'grantCalls', 'stats', 'flags', 'director', 'facility', 'goals']) need(isObj(s[k]), `${k} is missing`);
   for (const k of ['cultures', 'papers', 'orders', 'boxes', 'lostBoxes', 'inbox', 'candidates']) need(Array.isArray(s[k]), `${k} is missing`);
   need(s['inspection'] === null || isObj(s['inspection']), 'inspection');
   const dir = s['director'] as Raw;
@@ -41,7 +41,12 @@ export function validateState(raw: unknown): GameState {
   for (const g of Object.values(s['grantCalls'] as Raw)) need(isObj(g) && typeof g['announced'] === 'boolean' && isNum(g['payPercent']), 'a grant call');
   for (const b of s['lostBoxes'] as unknown[]) need(isObj(b) && typeof b['orderId'] === 'string' && isNum(b['x']) && isNum(b['y']), 'a lost box');
 
-  for (const k of ['autoclaveCycles', 'plotsBought', 'contaminations', 'requestsDone', 'requestsMissed', 'inspectionsDone']) need(isNum((s['stats'] as Raw)[k]), `stats.${k}`);
+  const fac = s['facility'] as Raw;
+  need(isNum(fac['target']) && typeof fac['autoReorder'] === 'boolean' && isNum(fac['batchLeft']) && isNum(fac['visitorTicks']) && isNum(fac['earned']), 'the facility settings');
+  const goals = s['goals'] as Raw;
+  need(isObj(goals['reached']) && typeof goals['partyDone'] === 'boolean' && Array.isArray(goals['prompted']), 'the goals');
+  for (const t of Object.values(goals['reached'] as Raw)) need(isNum(t), 'a goal time');
+  for (const k of ['autoclaveCycles', 'plotsBought', 'contaminations', 'requestsDone', 'requestsMissed', 'inspectionsDone', 'hires', 'prepBottles', 'mediaSold', 'visitorsServed']) need(isNum((s['stats'] as Raw)[k]), `stats.${k}`);
   for (const p of Object.values(s['plots'] as Raw)) need(isObj(p) && isNum(p['cleanliness']) && isNum(p['waste']), 'a plot');
   for (const e of Object.values(s['equipment'] as Raw)) {
     need(isObj(e) && typeof e['defId'] === 'string' && isNum(e['x']) && isNum(e['y']) && isNum(e['tier']) && isNum(e['rot']), 'a piece of equipment');

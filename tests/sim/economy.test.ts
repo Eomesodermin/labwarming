@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CORE_FUNDING, FRIDGE_REPAIR_COST } from '../../src/content/economy';
+import { CORE_FUNDING, FRIDGE_REPAIR_COST, PAPER, PRESENTATION } from '../../src/content/economy';
 import { DIRECTOR, EVENTS } from '../../src/content/events';
 import { PLAYER_ID } from '../../src/sim/commands';
 import { step } from '../../src/sim/step';
@@ -124,13 +124,13 @@ describe('the warm fridge', () => {
 
 describe('papers and Reviewer 2', () => {
   function write(s: ReturnType<typeof newGame>): void {
-    s.data = Math.max(s.data, 50);
+    s.data = Math.max(s.data, PAPER.data);
     doJob(s, 'desk', 'writePaper');
   }
 
-  it('uses 50 Data and goes to review for 40 s, then paper 1 is accepted outright', () => {
+  it('uses the paper Data cost and goes to review for 40 s, then paper 1 is accepted outright', () => {
     const s = newGame();
-    s.data = 60;
+    s.data = PAPER.data + 10;
     doJob(s, 'desk', 'writePaper');
     expect(s.data).toBe(10);
     expect(s.papers).toHaveLength(1);
@@ -158,13 +158,13 @@ describe('papers and Reviewer 2', () => {
     expect(s.funds).toBe(500); // nothing paid yet
   });
 
-  it('revising costs 10 Data, takes 8 s and then the paper is accepted', () => {
+  it('revising costs the revision Data, takes 8 s and then the paper is accepted', () => {
     const s = newGame();
     s.papers.push({ id: 'p1', number: 2, status: 'revise', reviewTicksLeft: 0 });
-    s.data = 9;
+    s.data = PAPER.reviseData - 1;
     stand(s, 'desk');
-    expect(rejections(step(s, [{ type: 'Interact', jobId: 'revisePaper' }]))).toEqual(['Needs 10 Data']);
-    s.data = 25;
+    expect(rejections(step(s, [{ type: 'Interact', jobId: 'revisePaper' }]))).toEqual([`Needs ${PAPER.reviseData} Data`]);
+    s.data = PAPER.reviseData + 15;
     const job0 = step(s, [{ type: 'Interact', jobId: 'revisePaper' }]);
     void job0;
     run(s, 85);
@@ -179,7 +179,7 @@ describe('papers and Reviewer 2', () => {
     for (let seed = 1; seed <= 30; seed++) {
       const s = newGame(seed);
       s.stats.papersWritten = 2;
-      s.data = 50;
+      s.data = PAPER.data;
       doJob(s, 'desk', 'writePaper');
       run(s, 410);
       outcomes.add(s.papers[0]?.status ?? '');
@@ -187,16 +187,16 @@ describe('papers and Reviewer 2', () => {
     expect([...outcomes].sort()).toEqual(['accepted', 'revise']);
   });
 
-  it('needs 50 Data to write a paper', () => {
+  it('needs the paper Data cost to write a paper', () => {
     const s = newGame();
-    s.data = 49;
+    s.data = PAPER.data - 1;
     stand(s, 'desk');
-    expect(rejections(step(s, [{ type: 'Interact', jobId: 'writePaper' }]))).toEqual(['Needs 50 Data']);
+    expect(rejections(step(s, [{ type: 'Interact', jobId: 'writePaper' }]))).toEqual([`Needs ${PAPER.data} Data`]);
   });
 
-  it('a presentation costs 20 Data and gives 8 Reputation', () => {
+  it('a presentation costs its Data and gives 8 Reputation', () => {
     const s = newGame();
-    s.data = 20;
+    s.data = PRESENTATION.data;
     doJob(s, 'desk', 'makePresentation');
     expect(s.data).toBe(0);
     expect(s.reputation).toBe(8);
@@ -247,7 +247,7 @@ describe('the inbox', () => {
 
   it('keeps the player where they were while jobs run', () => {
     const s = newGame();
-    s.data = 20;
+    s.data = PRESENTATION.data;
     doJob(s, 'desk', 'makePresentation');
     expect(s.agents[PLAYER_ID]?.jobId).toBeNull();
   });

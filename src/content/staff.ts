@@ -4,7 +4,8 @@
 import type { RoomTypeId } from '../sim/types';
 import type { JobId } from './jobs';
 
-export type StaffRole = 'technician' | 'washup' | 'cleaner';
+export type StaffRole = 'technician' | 'washup' | 'cleaner' | 'mediatech';
+/** The roles in the hire panel. The media technician comes with the Media Facility instead. */
 export const HIREABLE_ROLES: readonly StaffRole[] = ['technician', 'washup', 'cleaner'];
 
 export type TraitId =
@@ -78,6 +79,18 @@ export const ROLES: Record<StaffRole, RoleDef> = {
     lockedText: 'Needs 2 rooms',
     priority: ['takeOutWaste', 'tidyUp'],
     blurb: 'Has opinions about the bin. Mostly positive ones.',
+  },
+  mediatech: {
+    id: 'mediatech',
+    name: 'Media technician',
+    fee: 0,
+    salary: 50,
+    speed: 1.0,
+    unlockRep: 0,
+    needsRoom: 'media',
+    lockedText: 'Comes with the Media Facility',
+    priority: ['runMediaPrep', 'putAwayOrder'],
+    blurb: 'Keeps the media prep unit humming. Can smell a cloudy bottle across the room.',
   },
 };
 

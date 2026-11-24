@@ -146,6 +146,17 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
   },
   sofa: { id: 'sofa', name: 'Sofa', label: 'SOFA', w: 2, h: 1, stats: { mood: [10] }, price: 100, upgrades: [], category: 'decor' },
   plant: { id: 'plant', name: 'Plant', label: 'PLT', w: 1, h: 1, stats: { mood: [2] }, price: 30, upgrades: [], category: 'decor' },
+  // The Media Facility's unit. It makes media bottles, one at a time, from powder.
+  mediaprep: {
+    id: 'mediaprep',
+    name: 'Media prep unit',
+    label: 'PREP',
+    w: 2,
+    h: 1,
+    price: 400,
+    upgrades: [],
+    category: 'equipment',
+  },
   // The delivery bay in the corridor. Boxes wait here until someone puts them away.
   bay: { id: 'bay', name: 'Delivery bay', label: 'BAY', w: 1, h: 1, price: null, upgrades: [], category: 'fixed' },
 };

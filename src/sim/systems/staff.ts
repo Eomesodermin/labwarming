@@ -96,9 +96,18 @@ export function hireStaff(state: GameState, candidateId: string, events: SimEven
   const role = ROLES[cand.role];
   state.funds -= role.fee;
   state.candidates = state.candidates.filter((c) => c.id !== cand.id);
+  const agent = spawnStaff(state, cand.role, cand.name, cand.trait, cand.colour);
+  state.stats.hires += 1;
+  events.push({ type: 'Purchase', what: 'Hire' });
+  events.push({ type: 'StaffHired', agentId: agent.id, name: cand.name });
+  events.push({ type: 'Toast', text: `${cand.name} joins as ${role.name.toLowerCase()}. They walk in with a lanyard` });
+}
+
+/** A new member of staff walks in at the entrance. */
+export function spawnStaff(state: GameState, role: StaffRole, name: string, trait: Candidate['trait'], colour: Candidate['colour']): Agent {
   const agent: Agent = {
     id: `s${state.nextId++}`,
-    kind: cand.role,
+    kind: role,
     x: ENTRANCE.x,
     y: ENTRANCE.y,
     facing: 'right',
@@ -108,11 +117,11 @@ export function hireStaff(state: GameState, candidateId: string, events: SimEven
     jobId: null,
     pendingStation: null,
     staff: {
-      name: cand.name,
-      role: cand.role,
-      trait: cand.trait,
-      colour: cand.colour,
-      salary: role.salary,
+      name,
+      role,
+      trait,
+      colour,
+      salary: ROLES[role].salary,
       energy: ENERGY.max,
       workAcc: 0,
       mood: MOOD.base,
@@ -121,15 +130,17 @@ export function hireStaff(state: GameState, candidateId: string, events: SimEven
   };
   state.agents[agent.id] = agent;
   if (agent.staff) agent.staff.mood = computeMood(state, agent);
-  events.push({ type: 'Purchase', what: 'Hire' });
-  events.push({ type: 'StaffHired', agentId: agent.id, name: cand.name });
-  events.push({ type: 'Toast', text: `${cand.name} joins as ${role.name.toLowerCase()}. They walk in with a lanyard` });
+  return agent;
 }
 
 export function partWays(state: GameState, agentId: string, events: SimEvent[]): void {
   const agent = state.agents[agentId];
   if (!agent?.staff) {
     events.push({ type: 'CommandRejected', reason: 'Nobody to part ways with' });
+    return;
+  }
+  if (agent.staff.role === 'mediatech') {
+    events.push({ type: 'CommandRejected', reason: 'The media technician comes with the Media Facility' });
     return;
   }
   for (const j of Object.values(state.jobs)) if (j.workerId === agentId) releaseJob(state, j);

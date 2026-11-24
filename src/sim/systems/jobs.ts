@@ -1,6 +1,7 @@
 import { TICKS_PER_SECOND } from '../../content/balance';
 import { tierStat } from '../../content/equipment';
 import { PAPER, PRESENTATION } from '../../content/economy';
+import { FACILITY } from '../../content/facility';
 import { ITEM_NAMES } from '../../content/items';
 import { JOBS, TUNING, jobsForStation, type JobDef } from '../../content/jobs';
 import { ORDERS, isKnownOrder } from '../../content/orders';
@@ -37,7 +38,7 @@ export function jobSeconds(def: JobDef, eq: Equipment, state?: GameState): numbe
 
 /** Stations where E opens a menu instead of starting a job: the desk, and a broken fridge (repair). */
 export function stationHasMenu(eq: Equipment): boolean {
-  return eq.defId === 'desk' || (eq.defId === 'fridge' && eq.broken) || (eq.defId === 'autoclave' && eq.broken);
+  return eq.defId === 'desk' || eq.defId === 'mediaprep' || (eq.defId === 'fridge' && eq.broken) || (eq.defId === 'autoclave' && eq.broken);
 }
 
 /** True when the agent stands on a front tile of the station, still, and looks at it. */
@@ -115,6 +116,14 @@ export function jobBlocker(state: GameState, def: JobDef, eq: Equipment, pending
       if (eq.cycle) return eq.cycle.ticksLeft > 0 ? `Running, ${Math.ceil(eq.cycle.ticksLeft / TICKS_PER_SECOND)} s left` : 'Waiting for room on the shelf';
       if (s.dirtyFlasks < 1) return 'Needs 1 dirty flask';
       return null;
+    case 'runMediaPrep': {
+      const f = state.facility;
+      if (eq.broken) return 'Out of service';
+      if (s.media >= f.target) return `Media is at the target of ${f.target}`;
+      if (f.batchLeft <= 0 && s.mediaPowder <= pending) return 'Needs 1 media powder';
+      if (coldFree(state) < pending + 1) return 'The fridge is full';
+      return null;
+    }
     case 'coffeeBreak':
       return null;
   }
@@ -370,6 +379,18 @@ export function completeJob(state: GameState, job: Job, def: JobDef, eq: Equipme
       s.dirtyFlasks -= n;
       startCycle(eq, n);
       say(`Autoclave running with ${n} flask${n === 1 ? '' : 'es'}`);
+      break;
+    }
+    case 'runMediaPrep': {
+      const f = state.facility;
+      if (f.batchLeft <= 0) {
+        s.mediaPowder -= 1;
+        f.batchLeft = FACILITY.bottlesPerPowder;
+      }
+      f.batchLeft -= 1;
+      const made = addStock(state, 'media', 1);
+      state.stats.prepBottles += made;
+      say(`+${made} media`);
       break;
     }
     case 'coffeeBreak':

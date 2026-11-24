@@ -3,6 +3,7 @@
 // no event logic is hard-coded in the systems. Change text and numbers here.
 
 import { DAY_END_HOUR, DAY_START_HOUR, TICKS_PER_DAY } from './balance';
+import { FACILITY, PARTY } from './facility';
 import type { StockItem } from './items';
 
 export const PI_NAME = 'Prof. Quince';
@@ -57,7 +58,7 @@ export const FAILURES = {
 } as const;
 
 /** Bodo and the other visitors: how long they stand at each stop. */
-export const VISIT_DWELL_SEC = { cake: 10, walkthrough: 6, inspection: 4, courier: 1.5 } as const;
+export const VISIT_DWELL_SEC = { cake: 10, walkthrough: 6, inspection: 4, courier: 1.5, media: FACILITY.visitorDwellSec } as const;
 
 export type RequestStat = 'experiments' | 'splits' | 'presentations';
 
@@ -252,6 +253,15 @@ export const EVENTS: Record<string, EventDef> = {
     from: PI_NAME,
     subject: 'Cake in the corridor',
     body: 'Cake in the corridor. I said we would get it. I always said that.',
+    effects: [{ type: 'visit', visit: 'cake' }],
+  },
+  // Sent when the last Lab Warming goal ticks. The cake is the same cake as after a grant.
+  lab_party: {
+    id: 'lab_party',
+    group: 'pi',
+    from: PI_NAME,
+    subject: PARTY.email.subject,
+    body: PARTY.email.body,
     effects: [{ type: 'visit', visit: 'cake' }],
   },
   pi_walkthrough: {

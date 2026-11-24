@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PAPER } from '../../src/content/economy';
+import { PAPER, PRESENTATION } from '../../src/content/economy';
 import { MOOD } from '../../src/content/staff';
 import { PLAYER_ID } from '../../src/sim/commands';
 import { step } from '../../src/sim/step';
@@ -80,7 +80,7 @@ describe('PI requests', () => {
     setClock(s, 6, 14);
     fireEvent(s, 'pi_slides_tonight', []);
     expect(mails(s, 'pi_slides_tonight')[0]?.body).toContain('by Day 7, 18:00');
-    s.data = 20;
+    s.data = PRESENTATION.data;
     doJob(s, 'desk', 'makePresentation');
     run(s, 10);
     expect(s.funds).toBe(500 + 150);
@@ -121,17 +121,17 @@ describe('PI requests', () => {
 });
 
 describe('answering emails', () => {
-  it('"one more panel": yes makes the next paper cost 60 Data and pay +15 Reputation; the reply arrives', () => {
+  it('"one more panel": yes makes the next paper cost more Data and pay +15 Reputation; the reply arrives', () => {
     const s = newGame();
     const mail = fireEvent(s, 'pi_one_more_panel', []);
     step(s, [{ type: 'ChooseEventOption', emailId: mail?.id ?? '', option: 0 }]);
     expect(s.inbox.find((m) => m.id === mail?.id)?.chosen).toBe(0);
     expect(s.flags['onePanel']).toBe(true);
     expect(mails(s, 'pi_one_more_panel_reply')[0]?.body).toContain('I knew you would');
-    s.data = 59;
+    s.data = PAPER.panelData - 1;
     stand(s, 'desk');
-    expect(rejections(step(s, [{ type: 'Interact', jobId: 'writePaper' }]))).toEqual(['Needs 60 Data']);
-    s.data = 65;
+    expect(rejections(step(s, [{ type: 'Interact', jobId: 'writePaper' }]))).toEqual([`Needs ${PAPER.panelData} Data`]);
+    s.data = PAPER.panelData + 5;
     doJob(s, 'desk', 'writePaper');
     expect(s.data).toBe(5);
     expect(s.papers[0]?.panel).toBe(true);

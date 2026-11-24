@@ -147,6 +147,35 @@ describe('feedback notes', () => {
     expect(report.split('\n').slice(0, 3).join('\n')).toMatch(/Build .*\n.*play time.*10 min 00 s\n.*goals/i);
   });
 
+  it('puts the play time of each Lab Warming goal in the report summary, and "not yet" for the rest', () => {
+    const s = createInitialState(1);
+    s.tick = 13_000;
+    s.goals.reached['rooms'] = 11_760; // 19 min 36 s
+    s.goals.reached['request'] = 3_960; // 6 min 36 s
+    addNote(makeNote('Nice', 'like', s, []));
+    const notes = loadNotes();
+    expect(notes[0]?.goals).toEqual({ rooms: 1176, staff: null, facility: null, request: 396, grant: null });
+    const lines = buildReport(notes).split('\n');
+    expect(lines[0]).toMatch(/^Labwarming playtest notes\. Build /);
+    expect(lines[1]).toBe('Total play time at the last note: 21 min 40 s');
+    expect(lines[2]).toContain('Own 4 rooms: at 19 min 36 s');
+    expect(lines[2]).toContain('Get through 1 request from Prof. Quince: at 6 min 36 s');
+    expect(lines[2]).toContain('Hire 2 different kinds of staff: not yet');
+    expect(lines[2]).toContain('Open 1 facility: not yet');
+    expect(lines[3]).toBe('');
+  });
+
+  it('uses the goal times of the latest note, and copes with notes from before the list existed', () => {
+    const old = { text: 'x', face: null, at: '2026-01-01T00:00:00Z', playSeconds: 60, day: 1, time: '09:00', build: 'abc', funds: 1, reputation: 0, rooms: 1, staff: 0, lastEvents: [] };
+    expect(buildReport([old])).toContain('Own 4 rooms: not yet');
+    const s = createInitialState(1);
+    s.tick = 9000;
+    s.goals.reached['staff'] = 7000;
+    addNote(makeNote('later', null, s, []));
+    const latest = loadNotes()[0];
+    expect(buildReport([old, latest as NonNullable<typeof latest>])).toContain('Hire 2 different kinds of staff: at 11 min 40 s');
+  });
+
   it('copes with a damaged notes entry', () => {
     store.setItem(FEEDBACK_KEY, '{oops');
     expect(loadNotes()).toEqual([]);

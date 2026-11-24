@@ -1,5 +1,7 @@
 import { FEEDBACK_EMAIL, TICKS_PER_SECOND } from '../content/balance';
+import { GOALS } from '../content/facility';
 import { roomsOwned, formatClock } from '../sim/selectors';
+import { goalTimeSec } from '../sim/systems/goals';
 import type { GameState } from '../sim/types';
 import { BUILD_ID } from './buildInfo';
 import { storageGet, storageSet } from './storage';
@@ -22,6 +24,8 @@ export interface FeedbackNote {
   rooms: number;
   staff: number;
   lastEvents: string[];
+  /** Lab Warming goals: the play time in seconds at which each was reached, or null. Missing in older notes. */
+  goals?: Record<string, number | null>;
 }
 
 export function loadNotes(): FeedbackNote[] {
@@ -54,7 +58,23 @@ export function makeNote(text: string, face: Face | null, state: GameState, last
     rooms: roomsOwned(state),
     staff: Object.values(state.agents).filter((a) => a.kind !== 'player').length,
     lastEvents: lastEvents.slice(-5),
+    goals: goalTimes(state),
   };
+}
+
+/** The play time in seconds at which each Lab Warming goal was reached, or null if it was not. */
+export function goalTimes(state: GameState): Record<string, number | null> {
+  const out: Record<string, number | null> = {};
+  for (const g of GOALS) out[g.id] = goalTimeSec(state, g.id);
+  return out;
+}
+
+/** "Own 4 rooms at 19 min 36 s", or "... not yet". */
+export function goalLine(times: Record<string, number | null> | undefined): string {
+  return GOALS.map((g) => {
+    const t = times?.[g.id];
+    return `${g.text}: ${typeof t === 'number' ? `at ${formatPlayTime(t)}` : 'not yet'}`;
+  }).join('; ');
 }
 
 export function addNote(note: FeedbackNote): boolean {
@@ -77,7 +97,7 @@ export function buildReport(notes: FeedbackNote[]): string {
   const lines = [
     `Labwarming playtest notes. Build ${last?.build ?? BUILD_ID}`,
     `Total play time at the last note: ${last ? formatPlayTime(last.playSeconds) : 'no notes yet'}`,
-    'Checklist goals reached: the Lab Warming list arrives in a later build',
+    `Checklist goals reached: ${goalLine(last?.goals)}`,
     '',
   ];
   notes.forEach((n, i) => {

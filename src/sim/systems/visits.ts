@@ -6,6 +6,7 @@ import { findPath } from '../pathfinding';
 import type { SimEvent } from '../simEvents';
 import { secondsToTicks } from '../ticks';
 import type { Agent, AgentKind, GameState, Point, Visit, VisitKind } from '../types';
+import { facilityPlot, visitorBuys } from './facility';
 import { finishInspection, inspectRoom } from './inspection';
 
 const AGENTS_FOR: Record<VisitKind, AgentKind[]> = {
@@ -13,6 +14,7 @@ const AGENTS_FOR: Record<VisitKind, AgentKind[]> = {
   walkthrough: ['pi', 'visitor'],
   inspection: ['inspector'],
   courier: ['courier'],
+  media: ['visitor'],
 };
 
 function spawnAgent(state: GameState, kind: AgentKind): Agent {
@@ -73,6 +75,11 @@ function stopsFor(state: GameState, kind: VisitKind, target?: Point): Point[] {
       return [{ x: CAKE_SPOT.x - 1, y: CAKE_SPOT.y }];
     case 'courier':
       return [target ?? bayFront(state)];
+    case 'media': {
+      const plotId = facilityPlot(state);
+      const stop = plotId ? roomStop(state, plotId) : null;
+      return stop ? [stop] : [];
+    }
     case 'walkthrough':
     case 'inspection': {
       const out: Point[] = [];
@@ -148,6 +155,8 @@ function onArrive(state: GameState, visit: Visit, events: SimEvent[]): void {
       a.staff.workAcc = 0;
     }
     events.push({ type: 'Toast', text: 'Cake! Everyone is rested and in a good mood for a minute' });
+  } else if (visit.kind === 'media') {
+    visitorBuys(state, events);
   } else if (visit.kind === 'inspection') {
     const plotId = baseTile(here.x, here.y).plotId;
     if (plotId) inspectRoom(state, plotId);

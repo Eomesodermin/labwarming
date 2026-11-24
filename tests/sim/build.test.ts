@@ -68,9 +68,6 @@ describe('buying plots', () => {
     s.funds = 5000;
     expect(buy(s, 'b', 'office')).toEqual(['Needs Reputation 20']);
     expect(buy(s, 'b', 'media')).toEqual(['Needs Reputation 30']);
-    s.reputation = 30;
-    expect(buy(s, 'b', 'media')).toEqual([ROOMS.media.note]);
-    expect(s.plots['b']?.owned).toBe(false);
     s.reputation = 20;
     expect(buy(s, 'b', 'office')).toEqual([]);
     expect(s.funds).toBe(5000 - 350);

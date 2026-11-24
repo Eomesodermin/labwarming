@@ -125,6 +125,7 @@ export function sellInfo(state: GameState, eq: Equipment): SellInfo {
     return { refund, blocker: 'Empty the incubator first' };
   }
   if (eq.defId === 'autoclave' && eq.cycle) return { refund, blocker: 'Wait for the cycle to finish' };
+  if (eq.defId === 'mediaprep') return { refund, blocker: 'The Media Facility needs its prep unit' };
   return { refund, blocker: null };
 }
 

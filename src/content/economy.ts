@@ -11,21 +11,21 @@ export const FRIDGE_REPAIR_COST = 150;
 
 export const PAPER = {
   /** Data used, desk seconds, and how long the review takes. */
-  data: 50,
+  data: 100,
   writeSec: 20,
   reviewSec: 40,
   /** Paper 1 is always accepted, paper 2 always needs a revision. From paper 3 on, this chance of outright acceptance. */
   acceptChance: 0.6,
   acceptFunds: 250,
   acceptReputation: 10,
-  reviseData: 10,
+  reviseData: 20,
   reviseSec: 8,
   /** After saying yes to "one more panel" (design doc 6.3). */
-  panelData: 60,
+  panelData: 120,
   panelReputation: 15,
 } as const;
 
-export const PRESENTATION = { data: 20, sec: 12, reputation: 8 } as const;
+export const PRESENTATION = { data: 40, sec: 12, reputation: 8 } as const;
 
 export const GRANT_WRITE_SEC = 20;
 

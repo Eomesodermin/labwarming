@@ -3,6 +3,7 @@ import { FAILURES } from '../../content/events';
 import { ENTRANCE } from '../../content/map';
 import { DELIVERY_SEC } from '../../content/orders';
 import { ORDERS, isKnownOrder } from '../../content/orders';
+import { orderBlocker } from '../funds';
 import { findPath } from '../pathfinding';
 import { secondsToTicks } from '../ticks';
 import type { SimEvent } from '../simEvents';
@@ -66,6 +67,22 @@ export function ordersSystem(state: GameState, events: SimEvent[]): void {
     events.push({ type: 'BoxDelivered', boxId: box.id });
     events.push({ type: 'Toast', text: `Bodo left a box at the delivery bay: ${def.name}` });
   }
+}
+
+/** Places an order. Returns why it could not be placed, or null when it was. Used by the desk and by auto-reorder. */
+export function buyOrder(state: GameState, orderId: string, events: SimEvent[], quiet = false): string | null {
+  if (!isKnownOrder(orderId)) return 'Unknown order';
+  const def = ORDERS[orderId];
+  const why = orderBlocker(state, def.price);
+  if (why) return why;
+  state.funds -= def.price;
+  const order = { id: `o${state.nextId++}`, orderId, ticksLeft: deliveryTicks() };
+  state.orders.push(order);
+  state.stats.ordersPlaced += 1;
+  rollOrderFailures(state, order, events);
+  events.push({ type: 'Purchase', what: def.name });
+  events.push({ type: 'Toast', text: quiet ? `Auto-reorder: ${def.name}` : `Ordered: ${def.name}. It arrives in 30 s` });
+  return null;
 }
 
 export function deliveryTicks(): number {

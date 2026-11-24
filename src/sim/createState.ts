@@ -1,4 +1,5 @@
 import { DEFAULT_PLAYER_NAME, SCHEMA_VERSION } from '../content/balance';
+import { FACILITY } from '../content/facility';
 import { STARTING_FUNDS, STARTING_REPUTATION } from '../content/economy';
 import { START_STOCK } from '../content/items';
 import { PLAYER_START, PLOTS, START_EQUIPMENT, START_PLOT } from '../content/map';
@@ -6,7 +7,11 @@ import { PLAYER_ID } from './commands';
 import { fireEvent, newDirector, newGrantCalls } from './systems/eventCore';
 import { seedToState } from './rng';
 import { makeCandidates } from './systems/staff';
-import type { Equipment, GameState, Plot } from './types';
+import type { Equipment, FacilityState, GameState, Plot } from './types';
+
+export function newFacility(): FacilityState {
+  return { target: FACILITY.targetDefault, autoReorder: FACILITY.autoReorderDefault, batchLeft: 0, visitorTicks: -1, earned: 0 };
+}
 
 export function createInitialState(seed: number): GameState {
   const plots: Record<string, Plot> = {};
@@ -34,6 +39,8 @@ export function createInitialState(seed: number): GameState {
     lostBoxes: [],
     director: newDirector(seed),
     inspection: null,
+    facility: newFacility(),
+    goals: { reached: {}, partyDone: false, prompted: [] },
     inbox: [],
     stock: { ...START_STOCK },
     plots,
@@ -41,7 +48,7 @@ export function createInitialState(seed: number): GameState {
     jobs: {},
     cultures: [],
     candidates: [],
-    stats: { ordersPlaced: 0, papersWritten: 0, presentations: 0, boxesPutAway: 0, splits: 0, culturesGrown: 0, experiments: 0, washes: 0, mediaMade: 0, wasteTaken: 0, tidies: 0, binned: 0, sweetHits: 0, autoclaveCycles: 0, plotsBought: 0, contaminations: 0, requestsDone: 0, requestsMissed: 0, inspectionsDone: 0 },
+    stats: { ordersPlaced: 0, papersWritten: 0, presentations: 0, boxesPutAway: 0, splits: 0, culturesGrown: 0, experiments: 0, washes: 0, mediaMade: 0, wasteTaken: 0, tidies: 0, binned: 0, sweetHits: 0, autoclaveCycles: 0, plotsBought: 0, contaminations: 0, requestsDone: 0, requestsMissed: 0, inspectionsDone: 0, hires: 0, prepBottles: 0, mediaSold: 0, visitorsServed: 0 },
     agents: {
       [PLAYER_ID]: {
         id: PLAYER_ID,

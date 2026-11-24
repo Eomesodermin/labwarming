@@ -229,6 +229,13 @@ export interface Stats {
   requestsDone: number;
   requestsMissed: number;
   inspectionsDone: number;
+  /** Staff hired from the hire panel, ever. */
+  hires: number;
+  /** Media bottles made at the media prep unit. */
+  prepBottles: number;
+  /** Media bottles sold to visitors, and the visitors who bought. */
+  mediaSold: number;
+  visitorsServed: number;
 }
 
 /** One deadline-driven grant call. Seedling is open from the start. The others open on a scripted beat. */
@@ -259,7 +266,7 @@ export interface QueuedEvent {
   params?: Record<string, string>;
 }
 
-export type VisitKind = 'cake' | 'walkthrough' | 'inspection' | 'courier';
+export type VisitKind = 'cake' | 'walkthrough' | 'inspection' | 'courier' | 'media';
 
 /** A walking character with somewhere to go: stops in order, then out through the entrance. */
 export interface Visit {
@@ -313,6 +320,29 @@ export interface InspectionState {
   missed: InspectionCheck[];
 }
 
+/** The Media Facility's settings and counters. They exist from the start and only matter once it is open. */
+export interface FacilityState {
+  /** The prep unit keeps making bottles until media stock reaches this. */
+  target: number;
+  autoReorder: boolean;
+  /** Bottles still to come from the powder that is open in the prep unit. */
+  batchLeft: number;
+  /** Ticks until the next visitor, or -1 while the facility is closed. */
+  visitorTicks: number;
+  /** Funds earned from visitors. */
+  earned: number;
+}
+
+/** The Lab Warming list: when each goal was reached, and what has been shown once already. */
+export interface GoalsState {
+  /** Goal id to the sim tick (play time) at which it was first reached. */
+  reached: Record<string, number>;
+  /** The party has played. It plays once. */
+  partyDone: boolean;
+  /** Feedback prompts that were already sent, so none repeats. */
+  prompted: string[];
+}
+
 export interface GameState {
   schemaVersion: number;
   seed: number;
@@ -335,6 +365,8 @@ export interface GameState {
   lostBoxes: LostBox[];
   director: Director;
   inspection: InspectionState | null;
+  facility: FacilityState;
+  goals: GoalsState;
   inbox: Email[];
   stock: Stock;
   plots: Record<string, Plot>;

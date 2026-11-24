@@ -1,5 +1,6 @@
 import { DAY_END_HOUR, DAY_START_HOUR, TICKS_PER_DAY, TICKS_PER_SECOND } from '../content/balance';
 import { EQUIPMENT } from '../content/equipment';
+import { FACILITY, GOALS, type GoalId } from '../content/facility';
 import { ITEM_NAMES } from '../content/items';
 import { JOBS, jobsForStation } from '../content/jobs';
 import { TODO_STEPS, type TodoStat } from '../content/tutorial';
@@ -17,7 +18,10 @@ import { orderBlocker, spendBlocker } from './funds';
 import { HIREABLE_ROLES, ROLES, TRAITS, ENERGY, MOOD, type PortraitColour, type StaffRole, type TraitId } from '../content/staff';
 import { hireBlocker, isOnBreak, roleBlocker, staffAgents } from './systems/staff';
 import { slotsOf } from './systems/cultures';
+import { facilityOpen, facilityPlot } from './systems/facility';
+import { goalValue, goalTimeSec } from './systems/goals';
 import { autoclaveCapacity } from './systems/machines';
+import { ROOMS } from '../content/rooms';
 import type { Agent, Equipment, GameState, Plot } from './types';
 
 /** Time of day on the 24 hour clock. The day runs from 08:00 to 18:00. */
@@ -105,6 +109,10 @@ function stationInfo(state: GameState, eq: Equipment): string | null {
       return eq.outTicks && eq.outTicks > 0 ? `Installing updates, ${Math.ceil(eq.outTicks / TICKS_PER_SECOND)} s left` : null;
     case 'shelf':
       return `Dry storage ${dryUsed(state)}/${dryCapacity(state)}`;
+    case 'mediaprep': {
+      const f = state.facility;
+      return `Media ${state.stock.media}/${f.target}, powder ${state.stock.mediaPowder}${f.batchLeft > 0 ? ` (+${f.batchLeft} bottles open)` : ''}`;
+    }
     default:
       return null;
   }
@@ -148,6 +156,10 @@ export function todoList(state: GameState): TodoItem[] {
     switch (stat) {
       case 'readyCultures':
         return state.stats.culturesGrown;
+      case 'fridgeRepaired':
+        return Object.values(state.equipment).some((e) => e.defId === 'fridge' && e.broken) ? 0 : 1;
+      case 'seedlingApplied':
+        return state.grants['seedling'] ? 1 : 0;
       default:
         return state.stats[stat];
     }
@@ -170,6 +182,8 @@ export interface MenuEntry {
   /** Why it cannot be done right now, or null. */
   reason: string | null;
   command: Command;
+  /** Opens a panel instead of sending the command. */
+  panel?: 'media';
 }
 
 export interface StationMenu {
@@ -236,6 +250,33 @@ export function stationMenu(state: GameState, eq: Equipment): StationMenu | null
           command: { type: 'CoaxAutoclave', equipmentId: eq.id },
         },
         engineerEntry(state),
+      ],
+    };
+  }
+  if (eq.defId === 'mediaprep') {
+    const f = state.facility;
+    return {
+      stationId: eq.id,
+      title: 'Media prep menu',
+      entries: [
+        jobEntry(state, eq, 'runMediaPrep', `1 bottle, ${FACILITY.bottleSec} s, 6 per powder`),
+        {
+          id: 'reorder',
+          group: 'Settings',
+          label: `Auto-reorder is ${f.autoReorder ? 'on' : 'off'}`,
+          detail: f.autoReorder ? 'Switch off' : 'Switch on',
+          reason: null,
+          command: { type: 'SetAutoReorder', on: !f.autoReorder },
+        },
+        {
+          id: 'panel',
+          group: 'Settings',
+          label: `Target level ${f.target}`,
+          detail: 'Open the Media Kitchen panel',
+          reason: null,
+          command: { type: 'SetMediaTarget', target: f.target },
+          panel: 'media',
+        },
       ],
     };
   }
@@ -390,4 +431,88 @@ export function hireOptions(state: GameState): HireRole[] {
         })),
     };
   });
+}
+
+// ---- The Lab Warming list ----
+
+export interface GoalRow {
+  id: GoalId;
+  text: string;
+  hint: string;
+  have: number;
+  need: number;
+  done: boolean;
+  /** Play time in seconds when it was reached, or null. */
+  atSec: number | null;
+}
+
+/** The Lab Warming list. A goal stays done once it was reached. */
+export function goalRows(state: GameState): GoalRow[] {
+  return GOALS.map((g) => {
+    const reached = state.goals.reached[g.id] !== undefined;
+    const have = Math.min(g.need, goalValue(state, g.id));
+    return { id: g.id, text: g.text, hint: g.hint, have: reached ? g.need : have, need: g.need, done: reached || have >= g.need, atSec: goalTimeSec(state, g.id) };
+  });
+}
+
+/** How many goals are done, for the ring in the top bar. */
+export function goalProgress(state: GameState): { done: number; total: number } {
+  const rows = goalRows(state);
+  return { done: rows.filter((r) => r.done).length, total: rows.length };
+}
+
+// ---- The Media Kitchen panel ----
+
+export interface FacilityView {
+  open: boolean;
+  /** Why it is not open yet, in words. Null when open. */
+  lockedText: string | null;
+  target: number;
+  targetMin: number;
+  targetMax: number;
+  autoReorder: boolean;
+  media: number;
+  powder: number;
+  batchLeft: number;
+  /** Seconds to the next visitor, or null. */
+  nextVisitorSec: number | null;
+  sold: number;
+  earned: number;
+  visitors: number;
+  /** What the technician is doing, or null if nobody is there. */
+  techDoing: string | null;
+}
+
+export function facilityView(state: GameState): FacilityView {
+  const f = state.facility;
+  const open = facilityOpen(state);
+  const plots = Object.values(state.plots);
+  const room = plots.find((p) => p.owned && p.roomType === 'media');
+  let lockedText: string | null = null;
+  if (!open) {
+    if (!room) lockedText = state.reputation < ROOMS.media.unlockRep ? `Needs Reputation ${ROOMS.media.unlockRep} (you have ${state.reputation}). Then buy the room for ${ROOMS.media.cost}.` : `Buy a plot as a Media Facility (${ROOMS.media.cost}) in build mode.`;
+    else lockedText = 'The room is built. Put a media prep unit (400) inside to open it.';
+  }
+  const tech = staffRows(state).find((r) => r.role === 'mediatech');
+  return {
+    open,
+    lockedText,
+    target: f.target,
+    targetMin: FACILITY.targetMin,
+    targetMax: FACILITY.targetMax,
+    autoReorder: f.autoReorder,
+    media: state.stock.media,
+    powder: state.stock.mediaPowder,
+    batchLeft: f.batchLeft,
+    nextVisitorSec: open && f.visitorTicks >= 0 ? Math.ceil(f.visitorTicks / TICKS_PER_SECOND) : null,
+    sold: state.stats.mediaSold,
+    earned: f.earned,
+    visitors: state.stats.visitorsServed,
+    techDoing: tech ? tech.doing : null,
+  };
+}
+
+/** The media plot id, for views that want to point at it. */
+export function mediaRoomId(state: GameState): string | null {
+  return facilityPlot(state);
 }

@@ -1,6 +1,7 @@
 import type { EquipmentDefId } from '../sim/types';
 import { GRANT_WRITE_SEC, PAPER, PRESENTATION } from './economy';
 import { INSPECTION } from './events';
+import { FACILITY } from './facility';
 
 export type JobId =
   | 'splitCells'
@@ -17,7 +18,8 @@ export type JobId =
   | 'writeGrant'
   | 'loadAutoclave'
   | 'coffeeBreak'
-  | 'signLogbook';
+  | 'signLogbook'
+  | 'runMediaPrep';
 
 export interface JobDef {
   id: JobId;
@@ -70,6 +72,7 @@ export const JOBS: Record<JobId, JobDef> = {
     dirties: true,
   },
   signLogbook: { id: 'signLogbook', name: 'Sign logbook', station: 'desk', seconds: INSPECTION.signLogbookSec, speedStat: 'speed', dirties: false },
+  runMediaPrep: { id: 'runMediaPrep', name: 'Make a bottle', station: 'mediaprep', seconds: FACILITY.bottleSec, dirties: false },
   coffeeBreak: { id: 'coffeeBreak', name: 'Coffee break', station: 'coffee', seconds: 20, secondsStat: 'breakSec', dirties: false },
 };
 

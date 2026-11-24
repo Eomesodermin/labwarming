@@ -56,7 +56,7 @@ describe('hand-job content', () => {
 
   it('has to-do steps that name real stats', async () => {
     const { TODO_STEPS } = await import('../../src/content/tutorial');
-    expect(TODO_STEPS).toHaveLength(6);
+    expect(TODO_STEPS).toHaveLength(14);
   });
 });
 

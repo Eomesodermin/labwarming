@@ -24,6 +24,7 @@ const equipmentColours: Record<string, { fill: PaletteName; text: PaletteName }>
   coffee: { fill: 'terracotta', text: 'paper' },
   sofa: { fill: 'dustyRose', text: 'plum' },
   plant: { fill: 'sage', text: 'plum' },
+  mediaprep: { fill: 'moss', text: 'paper' },
 };
 
 export const SPRITES: Record<string, SpriteSource> = {};
@@ -36,6 +37,7 @@ for (const def of Object.values(EQUIPMENT)) {
 SPRITES['char.player'] = { kind: 'shape', fill: 'terracotta', text: 'plum', label: '' };
 SPRITES['char.technician'] = { kind: 'shape', fill: 'teal', text: 'plum', label: '' };
 SPRITES['char.washup'] = { kind: 'shape', fill: 'sky', text: 'plum', label: '' };
+SPRITES['char.mediatech'] = { kind: 'shape', fill: 'moss', text: 'plum', label: '' };
 SPRITES['char.cleaner'] = { kind: 'shape', fill: 'sage', text: 'plum', label: '' };
 SPRITES['char.pi'] = { kind: 'shape', fill: 'berry', text: 'paper', label: '' };
 SPRITES['char.inspector'] = { kind: 'shape', fill: 'slate', text: 'paper', label: '' };

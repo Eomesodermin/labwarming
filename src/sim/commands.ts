@@ -1,14 +1,14 @@
 import { FRIDGE_REPAIR_COST } from '../content/economy';
-import { ORDERS, isKnownOrder } from '../content/orders';
 import { coldCapacity, coldUsed, dryCapacity, dryUsed, plotOf, wasteCapacity } from './stock';
-import { deliveryTicks, rollOrderFailures } from './systems/orders';
+import { buyOrder } from './systems/orders';
 import { callEngineer, coax } from './systems/machines';
 import { chooseOption } from './systems/eventCore';
 import { atStation, facedStation, pressSweetSpot, startJob } from './systems/jobs';
 import { hireStaff, partWays } from './systems/staff';
-import { orderBlocker, spendBlocker } from './funds';
+import { spendBlocker } from './funds';
 import { findPathToAny, findPath } from './pathfinding';
 import { EQUIPMENT } from '../content/equipment';
+import { FACILITY } from '../content/facility';
 import { ROOMS } from '../content/rooms';
 import { DIR_VECTORS, ROT_FACING, equipmentAt, frontTiles, isWalkable, opposite } from './grid';
 import { buyPlotBlocker, placementBlocker, plotDef, sellInfo, sprayPlacement, upgradeInfo } from './placement';
@@ -36,7 +36,9 @@ export type Command =
   | { type: 'PartWays'; agentId: string }
   | { type: 'ChooseEventOption'; emailId: string; option: number }
   | { type: 'CoaxAutoclave'; equipmentId: string }
-  | { type: 'CallEngineer' };
+  | { type: 'CallEngineer' }
+  | { type: 'SetMediaTarget'; target: number }
+  | { type: 'SetAutoReorder'; on: boolean };
 
 export const PLAYER_ID = 'player';
 
@@ -132,17 +134,8 @@ function sweetSpotPress(state: GameState, events: SimEvent[]): void {
 }
 
 function placeOrder(state: GameState, orderId: string, events: SimEvent[]): void {
-  if (!isKnownOrder(orderId)) return reject(events, 'Unknown order');
-  const def = ORDERS[orderId];
-  const why = orderBlocker(state, def.price);
-  if (why) return reject(events, why);
-  state.funds -= def.price;
-  const order = { id: `o${state.nextId++}`, orderId, ticksLeft: deliveryTicks() };
-  state.orders.push(order);
-  state.stats.ordersPlaced += 1;
-  rollOrderFailures(state, order, events);
-  events.push({ type: 'Purchase', what: def.name });
-  events.push({ type: 'Toast', text: `Ordered: ${def.name}. It arrives in 30 s` });
+  const why = buyOrder(state, orderId, events);
+  if (why) reject(events, why);
 }
 
 function repairEquipment(state: GameState, equipmentId: string, events: SimEvent[]): void {
@@ -310,6 +303,14 @@ export function applyCommand(state: GameState, cmd: Command, events: SimEvent[])
       return coax(state, cmd.equipmentId, events);
     case 'CallEngineer':
       return callEngineer(state, events);
+    case 'SetMediaTarget': {
+      if (!Number.isFinite(cmd.target)) return reject(events, 'That is not a number');
+      state.facility.target = Math.min(FACILITY.targetMax, Math.max(FACILITY.targetMin, Math.round(cmd.target)));
+      return;
+    }
+    case 'SetAutoReorder':
+      state.facility.autoReorder = cmd.on === true;
+      return;
     case 'TogglePause':
       return setSpeed(state, state.clock.speed === 0 ? state.clock.resumeSpeed : 0, events);
   }

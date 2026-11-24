@@ -26,4 +26,7 @@ export type SimEvent =
   | { type: 'SweetSpot'; stationId: string; hit: boolean }
   | { type: 'CultureReady'; cultureId: string }
   | { type: 'CultureContaminated'; cultureId: string }
+  | { type: 'GoalReached'; goalId: string }
+  | { type: 'PartyStarted' }
+  | { type: 'FeedbackPrompt'; reason: 'party' | 'thirty' }
   | { type: 'Toast'; text: string };

@@ -9,7 +9,7 @@ import { newGame, run, stand } from './helpers';
 
 function busyGame(): ReturnType<typeof newGame> {
   const s = newGame(77);
-  s.data = 80;
+  s.data = 150;
   step(s, [{ type: 'PlaceOrder', orderId: 'flaskBox' }]);
   stand(s, 'desk');
   step(s, [{ type: 'Interact', jobId: 'writePaper' }]);
@@ -216,9 +216,9 @@ describe('migration from version 3 (milestone 5 saves)', () => {
   function m5Save(day = 1, tickOfDay = 0): Record<string, unknown> {
     const raw = JSON.parse(serialize(newGame(11))) as Record<string, unknown>;
     raw['schemaVersion'] = 3;
-    for (const k of ['director', 'grantCalls', 'lostBoxes', 'inspection']) delete raw[k];
+    for (const k of ['director', 'grantCalls', 'lostBoxes', 'inspection', 'facility', 'goals']) delete raw[k];
     const stats = raw['stats'] as Record<string, unknown>;
-    for (const k of ['contaminations', 'requestsDone', 'requestsMissed', 'inspectionsDone']) delete stats[k];
+    for (const k of ['contaminations', 'requestsDone', 'requestsMissed', 'inspectionsDone', 'hires', 'prepBottles', 'mediaSold', 'visitorsServed']) delete stats[k];
     (raw['clock'] as Record<string, unknown>)['day'] = day;
     (raw['clock'] as Record<string, unknown>)['tickOfDay'] = tickOfDay;
     return raw;
@@ -228,7 +228,6 @@ describe('migration from version 3 (milestone 5 saves)', () => {
     expect(() => validateState(m5Save())).toThrow();
     const loaded = restoreState(m5Save(), 3);
     expect(loaded.schemaVersion).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(4);
     expect(loaded.inspection).toBeNull();
     expect(loaded.lostBoxes).toEqual([]);
     expect(loaded.director.requests).toEqual([]);
@@ -262,13 +261,13 @@ describe('migration from version 3 (milestone 5 saves)', () => {
     expect(loaded.inbox.length).toBe(before);
   });
 
-  it('loads, plays on, and saves again as a version 4 save', () => {
+  it('loads, plays on, and saves again at the current version', () => {
     const loaded = deserialize(JSON.stringify(m5Save(3, 200)));
     run(loaded, 500);
     expect(loaded.grantCalls['equipment']?.announced).toBe(true); // the Day 3, 09:00 beat plays as normal
     const again = deserialize(serialize(loaded));
     expect(again).toEqual(loaded);
-    expect(again.schemaVersion).toBe(4);
+    expect(again.schemaVersion).toBe(SCHEMA_VERSION);
   });
 
   it('rejects a damaged director', () => {
