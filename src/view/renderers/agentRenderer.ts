@@ -5,8 +5,9 @@ import { moveSpeed } from '../../sim/systems/movement';
 import type { Agent, GameState } from '../../sim/types';
 import { ENERGY, MOOD } from '../../content/staff';
 import { isOnBreak } from '../../sim/systems/staff';
-import { PALETTE } from '../art/palette';
-import { characterSpriteKey, variantKey } from '../art/spriteRegistry';
+import { characterCanvas, characterLook, hashText, type CharFrame } from '../art/spriteRegistry';
+import { textureFrom } from '../art/textures';
+import { IconPool } from './iconPool';
 
 /** Where an agent is drawn, in world pixels: its tile centre, eased towards the next tile. */
 export function agentWorldPos(a: Agent, extraTicks: number): { x: number; y: number } {
@@ -18,18 +19,26 @@ export function agentWorldPos(a: Agent, extraTicks: number): { x: number; y: num
   return { x: tx * TILE_SIZE + TILE_SIZE / 2, y: ty * TILE_SIZE + TILE_SIZE };
 }
 
+/** The walk cycle runs on distance, so feet never slide: stride, stand, stride, stand every 4 pixels. */
+export function walkFrame(a: Agent, p: { x: number; y: number }): CharFrame {
+  const along = a.facing === 'left' || a.facing === 'right' ? p.x : p.y;
+  const phase = ((Math.floor(along / 4) % 4) + 4) % 4;
+  if (a.facing === 'left' || a.facing === 'right') return phase % 2 === 0 ? 'A' : 'stand';
+  return phase === 0 ? 'A' : phase === 2 ? 'B' : 'stand';
+}
+
 /** One sprite per agent. Positions are interpolated between ticks so movement looks smooth. */
 export class AgentRenderer {
   private sprites = new Map<string, Phaser.GameObjects.Image>();
-  private icons: Phaser.GameObjects.Graphics;
+  private icons: IconPool;
 
   constructor(private scene: Phaser.Scene) {
-    this.icons = scene.add.graphics().setDepth(4990);
+    this.icons = new IconPool(scene, 4990);
   }
 
   /** `tickFraction` is how far through the next tick the frame is, 0 to 1. Pass 0 when paused. */
-  sync(state: GameState, tickFraction: number): void {
-    this.icons.clear();
+  sync(state: GameState, tickFraction: number, nowMs: number): void {
+    this.icons.begin();
     for (const [id, sprite] of this.sprites) {
       if (!state.agents[id]) {
         sprite.destroy();
@@ -37,66 +46,55 @@ export class AgentRenderer {
       }
     }
     for (const a of Object.values(state.agents)) {
-      const tex = variantKey(characterSpriteKey(a.kind), a.facing);
+      const p = agentWorldPos(a, tickFraction);
+      const moving = a.path.length > 0;
+      let frame: CharFrame = 'stand';
+      if (moving) frame = walkFrame(a, p);
+      else if (a.jobId && Math.floor(nowMs / 320) % 2 === 0) frame = 'work';
+      const look = characterLook(a.kind, a.staff?.colour ?? null, hashText(a.id));
+      const key = `ch:${a.kind}:${a.staff?.colour ?? '-'}:${hashText(a.id) % 12}:${a.facing}:${frame}`;
+      const tex = textureFrom(this.scene, key, () => characterCanvas(look, a.facing, frame));
       let sprite = this.sprites.get(a.id);
       if (!sprite) {
         sprite = this.scene.add.image(0, 0, tex).setOrigin(0.5, 1);
         this.sprites.set(a.id, sprite);
       }
-      const p = agentWorldPos(a, tickFraction);
+      // A tiny bob on the passing frames makes the walk feel lighter.
+      const bob = moving && frame === 'stand' ? 1 : 0;
+      const x = Math.round(p.x);
+      const y = Math.round(p.y);
       sprite.setTexture(tex);
-      sprite.setPosition(Math.round(p.x), Math.round(p.y));
+      sprite.setPosition(x, y - bob);
       sprite.setDepth(p.y + 1);
-      if (a.staff) this.drawIcon(state, a, Math.round(p.x), Math.round(p.y));
-      else if (a.kind !== 'player') this.drawVisitor(state, a, Math.round(p.x), Math.round(p.y));
+      if (a.staff) this.drawIcon(state, a, x, y, nowMs);
+      else if (a.kind !== 'player') this.drawProp(state, a, x, y);
     }
+    this.icons.end();
   }
 
-  /** Quince, Tock, Bodo and guests: a prop each (cake, clipboard, box). */
-  private drawVisitor(state: GameState, a: Agent, x: number, y: number): void {
-    const g = this.icons;
+  /** Quince's cake, Tock's clipboard, Bodo's box: held in front of them. */
+  private drawProp(state: GameState, a: Agent, x: number, y: number): void {
+    const side = a.facing === 'left' ? -6 : a.facing === 'right' ? 6 : 0;
+    const depth = (a.facing === 'up' ? y : y + 2) + 1;
     if (a.kind === 'inspector') {
-      // A clipboard on the side they face.
-      g.fillStyle(PALETTE.plum).fillRect(x + 5, y - 14, 6, 8);
-      g.fillStyle(PALETTE.paper).fillRect(x + 6, y - 13, 4, 6);
-      g.fillStyle(PALETTE.slate).fillRect(x + 6, y - 11, 4, 1).fillRect(x + 6, y - 9, 3, 1);
+      this.icons.put('icon.clip', x + (side === 0 ? 6 : side), y - 4, { depth });
     } else if (a.kind === 'courier') {
-      g.fillStyle(PALETTE.plum).fillRect(x - 5, y - 24, 10, 8);
-      g.fillStyle(PALETTE.warmWood).fillRect(x - 4, y - 23, 8, 6);
-      g.fillStyle(PALETTE.cream).fillRect(x - 1, y - 23, 2, 6);
+      this.icons.put('icon.box', x + side, y - 3, { depth });
     } else if (a.kind === 'pi') {
       const visit = state.director.visits.find((v) => v.agentIds[0] === a.id);
-      if (visit?.kind === 'cake' && !visit.arrived && !visit.leaving) {
-        // Carrying the cake in.
-        g.fillStyle(PALETTE.plum).fillRect(x - 6, y - 17, 12, 8);
-        g.fillStyle(PALETTE.paper).fillRect(x - 5, y - 16, 10, 2);
-        g.fillStyle(PALETTE.dustyRose).fillRect(x - 5, y - 14, 10, 4);
-        g.fillStyle(PALETTE.mustard).fillRect(x - 1, y - 20, 2, 3);
-      }
+      if (visit?.kind === 'cake' && !visit.arrived && !visit.leaving) this.icons.put('icon.cake', x + side, y - 2, { depth });
     }
   }
 
-  /** A rain cloud over someone in a low mood, a coffee cup over someone who is on or heading for a break. */
-  private drawIcon(state: GameState, a: Agent, x: number, y: number): void {
+  /** A rain cloud over someone in a low mood, a cup over someone on a break, zzz for a rest, an ice bucket in a drill. */
+  private drawIcon(state: GameState, a: Agent, x: number, y: number, nowMs: number): void {
     const st = a.staff;
     if (!st) return;
-    const g = this.icons;
-    const top = y - 28;
-    if (state.director.drill) {
-      // The fire alarm test: an ice bucket each.
-      g.fillStyle(PALETTE.plum).fillRect(x - 5, top - 1, 10, 9);
-      g.fillStyle(PALETTE.sky).fillRect(x - 4, top, 8, 7);
-      g.fillStyle(PALETTE.paper).fillRect(x - 3, top, 3, 2).fillRect(x + 1, top + 1, 2, 2);
-    } else if (isOnBreak(state, a) || st.energy <= ENERGY.breakAt) {
-      g.fillStyle(PALETTE.plum).fillRect(x - 4, top - 1, 8, 8);
-      g.fillStyle(PALETTE.paper).fillRect(x - 3, top, 6, 6);
-      g.fillStyle(PALETTE.terracotta).fillRect(x - 3, top + 1, 6, 2);
-      g.fillStyle(PALETTE.plum).fillRect(x + 4, top + 1, 2, 4);
-    } else if (st.mood < MOOD.cloudBelow) {
-      g.fillStyle(PALETTE.plum).fillRect(x - 6, top + 1, 12, 5).fillRect(x - 4, top - 1, 8, 3);
-      g.fillStyle(PALETTE.slate).fillRect(x - 5, top + 2, 10, 3).fillRect(x - 3, top, 6, 2);
-      g.fillStyle(PALETTE.sky).fillRect(x - 3, top + 7, 1, 2).fillRect(x + 1, top + 8, 1, 2);
-    }
+    const top = y - 24 - (Math.floor(nowMs / 500) % 2);
+    if (state.director.drill) this.icons.put('icon.bucket', x, top);
+    else if (st.restTicks > 0) this.icons.put('icon.zzz', x + 4, top);
+    else if (isOnBreak(state, a) || st.energy <= ENERGY.breakAt) this.icons.put('icon.cup', x, top);
+    else if (st.mood < MOOD.cloudBelow) this.icons.put('icon.cloud', x, top);
   }
 
   spriteOf(id: string): Phaser.GameObjects.Image | undefined {

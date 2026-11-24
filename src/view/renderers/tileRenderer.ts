@@ -1,20 +1,30 @@
 import Phaser from 'phaser';
-import { DELIVERY_BAY, MAP_H, MAP_W, PLOTS, TILE_SIZE, WASTE_POINT } from '../../content/map';
+import { MAP_H, MAP_W, PLOTS, TILE_SIZE, WASTE_POINT } from '../../content/map';
 import { ROOMS } from '../../content/rooms';
 import { baseTile } from '../../sim/grid';
 import type { GameState } from '../../sim/types';
-import { PALETTE, PALETTE_HEX } from '../art/palette';
+import { PALETTE_HEX } from '../art/palette';
+import { floorCanvas, numberCanvas, spriteCanvas } from '../art/spriteRegistry';
 
 const T = TILE_SIZE;
+const TEX = 'world.tiles';
 
-/** Draws the floor plan: floors, walls, doors, the corridor and plots for sale. Redrawn when plots change. */
+/** What a plot costs at the least: the cheapest room that can be built. Shown on the sign. */
+function cheapestRoom(): number {
+  return Math.min(...Object.values(ROOMS).filter((r) => r.available).map((r) => r.cost));
+}
+
+/**
+ * Paints the floor plan once into a single canvas texture: floors, walls, doors, the corridor and
+ * the plots for sale. Repainted only when a plot changes. No text: the signs use a pixel font.
+ */
 export class TileRenderer {
-  private gfx: Phaser.GameObjects.Graphics;
-  private labels: Phaser.GameObjects.Text[] = [];
+  private tex: Phaser.Textures.CanvasTexture;
   private ownedKey = '';
 
-  constructor(private scene: Phaser.Scene) {
-    this.gfx = scene.add.graphics().setDepth(0);
+  constructor(scene: Phaser.Scene) {
+    this.tex = scene.textures.createCanvas(TEX, MAP_W * T, MAP_H * T) as Phaser.Textures.CanvasTexture;
+    scene.add.image(0, 0, TEX).setOrigin(0, 0).setDepth(0);
   }
 
   sync(state: GameState): void {
@@ -27,121 +37,103 @@ export class TileRenderer {
   }
 
   private draw(state: GameState): void {
-    const g = this.gfx;
-    g.clear();
-    for (const l of this.labels) l.destroy();
-    this.labels = [];
-
-    const wallAt = (x: number, y: number): boolean => baseTile(x, y).kind === 'wall';
-
+    const ctx = this.tex.getContext();
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, MAP_W * T, MAP_H * T);
+    const put = (c: HTMLCanvasElement, x: number, y: number): void => {
+      ctx.drawImage(c, x * T, y * T);
+    };
     for (let y = 0; y < MAP_H; y++) {
       for (let x = 0; x < MAP_W; x++) {
         const t = baseTile(x, y);
-        const px = x * T;
-        const py = y * T;
         const owned = t.plotId !== null && state.plots[t.plotId]?.owned === true;
         switch (t.kind) {
           case 'outside':
-            g.fillStyle(PALETTE.moss);
-            g.fillRect(px, py, T, T);
-            if ((x * 7 + y * 13) % 5 === 0) {
-              g.fillStyle(PALETTE.sage);
-              g.fillRect(px + 5, py + 6, 2, 2);
-            }
+            put(spriteCanvas((x * 7 + y * 13) % 3 === 0 ? 'tile.grass2' : 'tile.grass1'), x, y);
             break;
-          case 'wall':
-            g.fillStyle(PALETTE.stone);
-            g.fillRect(px, py, T, T);
+          case 'wall': {
+            const below = baseTile(x, y + 1).kind;
+            put(spriteCanvas(below !== 'wall' && below !== 'outside' ? 'tile.wallface' : 'tile.walltop'), x, y);
             break;
+          }
           case 'floor':
-            g.fillStyle(owned ? this.floorColour(state, t.plotId) : PALETTE.stone);
-            g.fillRect(px, py, T, T);
-            if (owned) {
-              g.lineStyle(1, PALETTE.butter, 0.5);
-              g.strokeRect(px + 0.5, py + 0.5, T - 1, T - 1);
-            }
+            put(owned ? floorCanvas(state.plots[t.plotId ?? '']?.roomType ?? null) : spriteCanvas('tile.lot'), x, y);
             break;
           case 'corridor':
-            g.fillStyle(PALETTE.stone);
-            g.fillRect(px, py, T, T);
-            g.lineStyle(1, PALETTE.slate, 0.25);
-            g.strokeRect(px + 0.5, py + 0.5, T - 1, T - 1);
+            put(spriteCanvas('tile.corridor'), x, y);
             break;
           case 'entrance':
-            g.fillStyle(PALETTE.butter);
-            g.fillRect(px, py, T, T);
-            g.lineStyle(1, PALETTE.mustard, 1);
-            g.strokeRect(px + 1.5, py + 1.5, T - 3, T - 3);
+            put(spriteCanvas('tile.entrance'), x, y);
             break;
           case 'door':
-            // An open door is a gap in the wall. A closed door is a wooden panel.
-            g.fillStyle(owned ? PALETTE.butter : PALETTE.cocoa);
-            g.fillRect(px, py, T, T);
-            g.lineStyle(1, PALETTE.plum, 1);
-            if (!owned) g.strokeRect(px + 1.5, py + 1.5, T - 3, T - 3);
+            put(spriteCanvas(owned ? 'tile.dooropen' : 'tile.doorclosed'), x, y);
             break;
         }
       }
     }
+    put(spriteCanvas('tile.wastepoint'), WASTE_POINT.x, WASTE_POINT.y);
 
     // Wall outlines: a plum line wherever a wall meets something that is not wall.
-    g.lineStyle(1, PALETTE.plum, 1);
+    ctx.fillStyle = PALETTE_HEX.plum;
     for (let y = 0; y < MAP_H; y++) {
       for (let x = 0; x < MAP_W; x++) {
-        if (!wallAt(x, y)) continue;
-        const px = x * T;
-        const py = y * T;
-        const edge = (nx: number, ny: number): boolean => {
-          const k = baseTile(nx, ny).kind;
-          return k !== 'wall' && k !== 'outside';
-        };
-        if (edge(x, y - 1)) g.lineBetween(px, py + 0.5, px + T, py + 0.5);
-        if (edge(x, y + 1)) g.lineBetween(px, py + T - 0.5, px + T, py + T - 0.5);
-        if (edge(x - 1, y)) g.lineBetween(px + 0.5, py, px + 0.5, py + T);
-        if (edge(x + 1, y)) g.lineBetween(px + T - 0.5, py, px + T - 0.5, py + T);
-        // Outer edge against the grass.
-        const out = (nx: number, ny: number): boolean => baseTile(nx, ny).kind === 'outside';
-        if (out(x, y - 1)) g.lineBetween(px, py + 0.5, px + T, py + 0.5);
-        if (out(x, y + 1)) g.lineBetween(px, py + T - 0.5, px + T, py + T - 0.5);
-        if (out(x - 1, y)) g.lineBetween(px + 0.5, py, px + 0.5, py + T);
-        if (out(x + 1, y)) g.lineBetween(px + T - 0.5, py, px + T - 0.5, py + T);
+        if (baseTile(x, y).kind !== 'wall') continue;
+        const open = (nx: number, ny: number): boolean => baseTile(nx, ny).kind !== 'wall';
+        if (open(x, y - 1)) ctx.fillRect(x * T, y * T, T, 1);
+        if (open(x, y + 1)) ctx.fillRect(x * T, y * T + T - 1, T, 1);
+        if (open(x - 1, y)) ctx.fillRect(x * T, y * T, 1, T);
+        if (open(x + 1, y)) ctx.fillRect(x * T + T - 1, y * T, 1, T);
       }
     }
 
-    // Plots for sale: a darker overlay with a sign.
+    // Plots for sale: a dashed outline and a small sign with the price.
+    const price = cheapestRoom();
     for (const def of PLOTS) {
       if (state.plots[def.id]?.owned) continue;
-      g.fillStyle(PALETTE.slate, 0.18);
-      g.fillRect(def.x * T, def.y * T, def.w * T, def.h * T);
-      g.lineStyle(1, PALETTE.slate, 0.8);
-      g.strokeRect(def.x * T + 4.5, def.y * T + 4.5, def.w * T - 9, def.h * T - 9);
-      const cx = (def.x + def.w / 2) * T;
-      const cy = (def.y + def.h / 2) * T;
-      this.labels.push(this.text(cx, cy - 4, 'FOR SALE', PALETTE_HEX.plum, 8));
-      this.labels.push(this.text(cx, cy + 6, `Plot ${def.id.toUpperCase()}`, PALETTE_HEX.plum, 6));
+      this.dashedBox(ctx, def.x * T + 3, def.y * T + 3, def.w * T - 6, def.h * T - 6);
+      this.sign(ctx, (def.x + def.w / 2) * T, (def.y + def.h / 2) * T, price);
     }
-
-    // Delivery bay and waste point markers.
-    this.marker(DELIVERY_BAY.x, DELIVERY_BAY.y, PALETTE.mustard, 'IN');
-    this.marker(WASTE_POINT.x, WASTE_POINT.y, PALETTE.berry, 'OUT');
+    this.tex.refresh();
   }
 
-  private floorColour(state: GameState, plotId: string | null): number {
-    const type = plotId ? state.plots[plotId]?.roomType : null;
-    return PALETTE[type ? ROOMS[type].floor : 'cream'];
+  /** A one pixel dashed rectangle in paper, with a plum dash under it so it shows on any ground. */
+  private dashedBox(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+    const dash = (px: number, py: number, horizontal: boolean, i: number): void => {
+      if (Math.floor(i / 3) % 2 !== 0) return;
+      ctx.fillStyle = PALETTE_HEX.plum;
+      ctx.fillRect(px + (horizontal ? 0 : 1), py + (horizontal ? 1 : 0), 1, 1);
+      ctx.fillStyle = PALETTE_HEX.paper;
+      ctx.fillRect(px, py, 1, 1);
+    };
+    for (let i = 0; i < w; i++) {
+      dash(x + i, y, true, i);
+      dash(x + i, y + h - 1, true, i);
+    }
+    for (let j = 0; j < h; j++) {
+      dash(x, y + j, false, j);
+      dash(x + w - 1, y + j, false, j);
+    }
   }
 
-  private marker(x: number, y: number, colour: number, label: string): void {
-    const g = this.gfx;
-    g.lineStyle(1, colour, 1);
-    g.strokeRect(x * T + 1.5, y * T + 1.5, T - 3, T - 3);
-    this.labels.push(this.text(x * T + T / 2, y * T + T / 2, label, PALETTE_HEX.plum, 5));
-  }
-
-  private text(x: number, y: number, s: string, colour: string, size: number): Phaser.GameObjects.Text {
-    return this.scene.add
-      .text(x, y, s, { fontFamily: 'monospace', fontSize: `${size}px`, fontStyle: 'bold', color: colour })
-      .setOrigin(0.5)
-      .setDepth(1);
+  /** A little wooden sign on a post: a coin and the price. */
+  private sign(ctx: CanvasRenderingContext2D, cx: number, cy: number, price: number): void {
+    const digits = numberCanvas(price, 'p');
+    const coin = spriteCanvas('icon.coin');
+    const w = coin.width + 2 + digits.width + 6;
+    const h = 11;
+    const x = Math.round(cx - w / 2);
+    const y = Math.round(cy - h / 2) - 3;
+    ctx.fillStyle = PALETTE_HEX.cocoa;
+    ctx.fillRect(Math.round(cx) - 1, y + h, 3, 5);
+    ctx.fillStyle = PALETTE_HEX.plum;
+    ctx.fillRect(Math.round(cx) - 2, y + h + 4, 5, 1);
+    ctx.fillStyle = PALETTE_HEX.plum;
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = PALETTE_HEX.butter;
+    ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+    ctx.fillStyle = PALETTE_HEX.mustard;
+    ctx.fillRect(x + 1, y + h - 2, w - 2, 1);
+    ctx.drawImage(coin, x + 3, y + 3);
+    ctx.drawImage(digits, x + 3 + coin.width + 2, y + 3);
   }
 }

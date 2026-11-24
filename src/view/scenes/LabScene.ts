@@ -3,7 +3,7 @@ import { TICK_MS } from '../../content/balance';
 import { MAP_H, MAP_W, PLOTS, TILE_SIZE } from '../../content/map';
 import type { GameHost } from '../../host';
 import { PLAYER_ID, type Command } from '../../sim/commands';
-import { EQUIPMENT } from '../../content/equipment';
+import { EQUIPMENT, maxTier } from '../../content/equipment';
 import { equipmentAt, inBounds, isWalkable } from '../../sim/grid';
 import { spendBlocker } from '../../sim/funds';
 import { placementBlocker } from '../../sim/placement';
@@ -11,6 +11,7 @@ import { plotOf } from '../../sim/stock';
 import { facedMenu, stationPrompt } from '../../sim/selectors';
 import { step } from '../../sim/step';
 import { PALETTE } from '../art/palette';
+import { sound } from '../audio/sound';
 import { createWalkInput, type WalkInput } from '../input/walkInput';
 import { AgentRenderer, agentWorldPos } from '../renderers/agentRenderer';
 import { BuildRenderer } from '../renderers/buildRenderer';
@@ -150,8 +151,10 @@ export class LabScene extends Phaser.Scene {
     this.equipment.sync(state);
     this.status.sync(state, this.time.now);
     this.updateGhost();
-    this.build.sync(state, this.host.ui.build, this.time.now);
+    this.build.sync(state, this.host.ui.build, this.time.now, this.cameras.main, this.host.ui.world);
+    this.updateTip();
     this.syncAgents(state.clock.speed === 0 ? 0 : this.acc / TICK_MS);
+    this.stepSound();
   }
 
   /** Zooms out for build mode and back in when it ends. */
@@ -172,6 +175,41 @@ export class LabScene extends Phaser.Scene {
       cam.startFollow(this.cameraTarget, true, 1, 0.12);
       const p = this.cameraTarget;
       cam.centerOn(p.x, p.y);
+    }
+  }
+
+  /** The name of whatever is under the cursor, for the ui to show beside it. */
+  private updateTip(): void {
+    const world = this.host.ui.world;
+    const b = this.host.ui.build;
+    const pointer = this.input.activePointer;
+    const tile = this.pointerIn && this.host.ui.blocking === 0 && !b.held ? this.pointerTile(pointer) : null;
+    if (!tile) {
+      world.tip = null;
+      return;
+    }
+    const { state } = this.host;
+    const eq = equipmentAt(state, tile.x, tile.y);
+    let text: string | null = null;
+    if (eq) {
+      const def = EQUIPMENT[eq.defId];
+      text = `${def?.name ?? eq.defId}${maxTier(eq.defId) > 1 ? `, tier ${eq.tier}` : ''}${eq.broken ? ', broken' : ''}`;
+    } else {
+      const plotId = this.plotIdAt(tile.x, tile.y);
+      if (plotId && !state.plots[plotId]?.owned) text = 'Plot for sale. Press B to build here';
+    }
+    world.tip = text ? { text, gx: pointer.x, gy: pointer.y } : null;
+  }
+
+  /** A soft step each time the player reaches a new tile. */
+  private lastStep = '';
+  private stepSound(): void {
+    const p = this.host.state.agents[PLAYER_ID];
+    if (!p) return;
+    const at = `${p.x},${p.y}`;
+    if (at !== this.lastStep) {
+      if (this.lastStep !== '') sound.play('step');
+      this.lastStep = at;
     }
   }
 
@@ -251,7 +289,7 @@ export class LabScene extends Phaser.Scene {
 
   private syncAgents(tickFraction: number): void {
     const { state } = this.host;
-    this.agents.sync(state, tickFraction);
+    this.agents.sync(state, tickFraction, this.time.now);
     const player = state.agents[PLAYER_ID];
     if (player) {
       const p = agentWorldPos(player, tickFraction);

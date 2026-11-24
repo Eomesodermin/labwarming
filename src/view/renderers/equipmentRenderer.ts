@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
 import { TILE_SIZE } from '../../content/map';
 import { footprintSize } from '../../sim/grid';
+import { plotOf, wasteCapacity } from '../../sim/stock';
 import type { GameState } from '../../sim/types';
-import { equipmentSpriteKey, variantKey } from '../art/spriteRegistry';
+import { equipmentCanvas, equipState } from '../art/spriteRegistry';
+import { textureFrom } from '../art/textures';
 
 /** One sprite per piece of equipment, created and destroyed as entities appear and disappear. */
 export class EquipmentRenderer {
@@ -18,7 +20,10 @@ export class EquipmentRenderer {
       }
     }
     for (const eq of Object.values(state.equipment)) {
-      const tex = variantKey(equipmentSpriteKey(eq.defId, eq.tier), eq.rot);
+      const plot = eq.defId === 'bin' ? plotOf(eq) : null;
+      const full = plot !== null && (state.plots[plot]?.waste ?? 0) >= Math.max(1, wasteCapacity(state, plot));
+      const st = equipState(eq, full);
+      const tex = textureFrom(this.scene, `eq:${eq.defId}|${eq.tier}|${eq.rot}|${st}`, () => equipmentCanvas(eq.defId, eq.tier, eq.rot, st));
       let sprite = this.sprites.get(eq.id);
       if (!sprite) {
         sprite = this.scene.add.image(0, 0, tex).setOrigin(0, 0);

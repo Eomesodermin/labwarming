@@ -2,29 +2,34 @@ import Phaser from 'phaser';
 import { EQUIPMENT } from '../../content/equipment';
 import { MAP_H, MAP_W, PLOTS, TILE_SIZE } from '../../content/map';
 import { ROOMS } from '../../content/rooms';
-import type { BuildUi } from '../../host';
+import type { BuildUi, WorldUi } from '../../host';
 import { footprintTiles, frontTiles } from '../../sim/grid';
 import { insideDoorTile, pathWarnings } from '../../sim/placement';
 import type { Equipment, GameState } from '../../sim/types';
-import { PALETTE, PALETTE_HEX } from '../art/palette';
+import { PALETTE } from '../art/palette';
+import { IconPool } from './iconPool';
 
 const T = TILE_SIZE;
 
 /** The build mode overlay: the tile grid, keep-clear marks, room names, the ghost and warnings. */
 export class BuildRenderer {
   private g: Phaser.GameObjects.Graphics;
-  private names = new Map<string, Phaser.GameObjects.Text>();
-  private warn = new Map<string, Phaser.GameObjects.Text>();
+  private icons: IconPool;
 
-  constructor(private scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene) {
     this.g = scene.add.graphics().setDepth(4000);
+    this.icons = new IconPool(scene, 4002);
   }
 
-  sync(state: GameState, build: BuildUi, nowMs: number): void {
+  sync(state: GameState, build: BuildUi, nowMs: number, cam: Phaser.Cameras.Scene2D.Camera, world: WorldUi): void {
     const g = this.g;
     g.clear();
-    this.showTexts(state, build.active);
-    if (!build.active) return;
+    this.icons.begin();
+    world.labels = build.active ? this.roomLabels(state, cam) : [];
+    if (!build.active) {
+      this.icons.end();
+      return;
+    }
 
     // The grid, over the whole map.
     g.lineStyle(1, PALETTE.plum, 0.18);
@@ -57,19 +62,18 @@ export class BuildRenderer {
     if (sel) this.outline(sel, PALETTE.mustard, 2);
 
     // Equipment that nobody can walk up to.
-    const warned = new Set<string>();
     const pulse = 0.35 + 0.25 * Math.sin(nowMs / 220);
     for (const w of pathWarnings(state)) {
       const eq = state.equipment[w.equipmentId];
       if (!eq) continue;
-      warned.add(eq.id);
+      this.icons.put('icon.exclaim', eq.x * T + 8, eq.y * T + 8);
       for (const t of footprintTiles(eq)) g.fillStyle(PALETTE.berry, pulse).fillRect(t.x * T, t.y * T, T, T);
       this.outline(eq, PALETTE.berry, 2);
     }
-    this.syncWarnTexts(state, warned);
 
     // The ghost.
     if (build.held && build.hover) this.drawGhost(build);
+    this.icons.end();
   }
 
   private inPlot(plotId: string, x: number, y: number): boolean {
@@ -106,44 +110,18 @@ export class BuildRenderer {
     }
   }
 
-  private showTexts(state: GameState, on: boolean): void {
+  /** Room names at the top left of each built room, as game-pixel positions for the ui to draw. */
+  private roomLabels(state: GameState, cam: Phaser.Cameras.Scene2D.Camera): WorldUi['labels'] {
+    const out: WorldUi['labels'] = [];
     for (const def of PLOTS) {
       const plot = state.plots[def.id];
-      let t = this.names.get(def.id);
-      if (!t) {
-        t = this.text(0, 0, '', PALETTE_HEX.plum, 6);
-        t.setOrigin(0, 0).setDepth(4001);
-        this.names.set(def.id, t);
-      }
-      t.setPosition(def.x * T + 2, def.y * T + 1);
-      t.setText(plot?.owned && plot.roomType ? ROOMS[plot.roomType].name.toUpperCase() : '');
-      t.setVisible(on && !!plot?.owned);
+      if (!plot?.owned || !plot.roomType) continue;
+      out.push({
+        text: ROOMS[plot.roomType].name,
+        gx: (def.x * T + 3 - cam.worldView.x) * cam.zoom,
+        gy: (def.y * T + 2 - cam.worldView.y) * cam.zoom,
+      });
     }
-    if (!on) for (const t of this.warn.values()) t.setVisible(false);
-  }
-
-  private syncWarnTexts(state: GameState, warned: Set<string>): void {
-    for (const [id, t] of this.warn) {
-      if (!warned.has(id) || !state.equipment[id]) {
-        t.destroy();
-        this.warn.delete(id);
-      }
-    }
-    for (const id of warned) {
-      const eq = state.equipment[id];
-      if (!eq) continue;
-      let t = this.warn.get(id);
-      if (!t) {
-        t = this.text(0, 0, '!', PALETTE_HEX.paper, 9);
-        t.setDepth(4002).setBackgroundColor(PALETTE_HEX.berry).setPadding(2, 0, 2, 0);
-        this.warn.set(id, t);
-      }
-      t.setVisible(true);
-      t.setPosition(eq.x * T + 2, eq.y * T - 1);
-    }
-  }
-
-  private text(x: number, y: number, s: string, colour: string, size: number): Phaser.GameObjects.Text {
-    return this.scene.add.text(x, y, s, { fontFamily: 'monospace', fontSize: `${size}px`, fontStyle: 'bold', color: colour });
+    return out;
   }
 }

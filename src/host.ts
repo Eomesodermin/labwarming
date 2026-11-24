@@ -21,6 +21,14 @@ export function freshBuild(): BuildUi {
   return { active: false, held: null, hover: null, valid: false, hint: null, selectedEquipment: null, selectedPlot: null };
 }
 
+/** Text the scene wants shown over the picture. The ui draws it as HTML so it stays crisp. Positions are in game pixels (480 by 270). */
+export interface WorldUi {
+  /** What is under the cursor: a piece of equipment or a plot for sale. */
+  tip: { text: string; gx: number; gy: number } | null;
+  /** Room names, shown in build mode. */
+  labels: Array<{ text: string; gx: number; gy: number }>;
+}
+
 /** Flags and hooks the ui layer sets and the view reads. They are never saved. */
 export interface UiFlags {
   /** Greater than 0 while a panel is open. Game keys are ignored then. */
@@ -32,6 +40,8 @@ export interface UiFlags {
   openMenu: () => void;
   /** Build mode (design doc 3.2). */
   build: BuildUi;
+  /** Hover names and room labels, written by the scene and drawn by the ui. */
+  world: WorldUi;
   /** Turns build mode on or off. Set by the ui. */
   setBuild: (on: boolean) => void;
   /** Opens the Lab panel on a tab. Set by the ui. */
@@ -63,7 +73,7 @@ export function createHost(state: GameState): GameHost {
   const host: GameHost = {
     state,
     events: new Emitter<SimEvent>(),
-    ui: { blocking: 0, pauseHolds: 0, restoreSpeed: null, openMenu: () => undefined, build: freshBuild(), setBuild: () => undefined, openLab: () => undefined, panelKey: () => false },
+    ui: { blocking: 0, pauseHolds: 0, restoreSpeed: null, openMenu: () => undefined, build: freshBuild(), world: { tip: null, labels: [] }, setBuild: () => undefined, openLab: () => undefined, panelKey: () => false },
     saving: false,
     send: (cmd) => {
       queue.push(cmd);

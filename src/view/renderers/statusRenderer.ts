@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { IconPool } from './iconPool';
 import { TICKS_PER_SECOND } from '../../content/balance';
 import { tierStat } from '../../content/equipment';
 import { PLOTS, TILE_SIZE } from '../../content/map';
@@ -36,21 +37,27 @@ function gaugeOrigin(eq: Equipment, w: number, h: number): { x: number; y: numbe
  */
 export class StatusRenderer {
   private g: Phaser.GameObjects.Graphics;
+  private icons: IconPool;
 
   constructor(scene: Phaser.Scene) {
     this.g = scene.add.graphics().setDepth(5000);
+    this.icons = new IconPool(scene, 5001);
   }
 
   sync(state: GameState, nowMs: number): void {
     const g = this.g;
     g.clear();
+    this.icons.begin();
     for (const eq of Object.values(state.equipment)) {
       if (eq.defId === 'incubator') this.drawCultures(state, eq, nowMs);
       else if (eq.defId === 'bin') this.drawBinGauge(state, eq);
       else if (eq.defId === 'fridge' && eq.broken) this.drawWarning(eq, nowMs);
       else if (eq.defId === 'bay') this.drawBoxes(state, eq);
       else if (eq.defId === 'autoclave' && eq.broken) this.drawWarning(eq, nowMs);
-      else if (eq.defId === 'autoclave' && eq.cycle) this.drawCycle(eq, eq.cycle.ticksLeft);
+      else if (eq.defId === 'autoclave' && eq.cycle) {
+        this.drawCycle(eq, eq.cycle.ticksLeft);
+        this.steam(eq.x * TILE_SIZE + 22, eq.y * TILE_SIZE + 2, nowMs);
+      }
       if (eq.defId === 'autoclave' && eq.broken && eq.repairTicks) this.drawTimer(eq, eq.repairTicks, 300, PALETTE.teal);
       if (eq.defId === 'bench' && eq.outTicks) this.drawTimer(eq, eq.outTicks, 200, PALETTE.sky);
     }
@@ -63,6 +70,7 @@ export class StatusRenderer {
       const worker = state.agents[job.workerId];
       this.drawJobBar(eq, job, worker?.jobId === job.id);
     }
+    this.icons.end();
   }
 
   private drawJobBar(eq: Equipment, job: Job, active: boolean): void {
@@ -114,11 +122,11 @@ export class StatusRenderer {
       g.fillStyle(PALETTE.plum, 1).fillRect(x - 1, y - 1, size + 2, size + 2);
       g.fillStyle(PALETTE.butter, 1).fillRect(x, y, size, size);
       // A small twinkle above a ready culture.
-      if (Math.floor(nowMs / 400) % 2 === 0) g.fillStyle(PALETTE.mustard, 1).fillRect(x + 1, y - 4, 2, 2);
+      this.icons.put(Math.floor(nowMs / 400) % 2 === 0 ? 'icon.sparkle' : 'icon.sparkle2', x + 2, y - 1);
     } else {
       g.fillStyle(PALETTE.plum, 1).fillRect(x - 1, y - 1, size + 2, size + 2);
       g.fillStyle(PALETTE.moss, 1).fillRect(x, y, size, size);
-      g.fillStyle(PALETTE.sage, 1).fillRect(x - 1, y + 1, 1, 2).fillRect(x + size, y + 1, 1, 2).fillRect(x + 1, y - 2, 2, 1);
+      this.icons.put('icon.fuzz', x + 2, y + 3);
     }
   }
 
@@ -149,16 +157,10 @@ export class StatusRenderer {
     this.g.fillStyle(full ? PALETTE.berry : PALETTE.mustard, 1).fillRect(x, y, Math.round((Math.min(waste, cap) / cap) * w), h);
   }
 
-  /** Delivered boxes wait on the bay, drawn as small cardboard squares. */
+  /** Delivered boxes wait on the bay. */
   private drawBoxes(state: GameState, eq: Equipment): void {
-    const n = Math.min(state.boxes.length, 4);
-    for (let i = 0; i < n; i++) {
-      const x = eq.x * TILE_SIZE + 2 + (i % 2) * 6;
-      const y = eq.y * TILE_SIZE + 2 + Math.floor(i / 2) * 6;
-      this.g.fillStyle(PALETTE.plum, 1).fillRect(x - 1, y - 1, 7, 7);
-      this.g.fillStyle(PALETTE.warmWood, 1).fillRect(x, y, 5, 5);
-      this.g.fillStyle(PALETTE.cream, 1).fillRect(x + 2, y, 1, 5);
-    }
+    const n = Math.min(state.boxes.length, 3);
+    for (let i = 0; i < n; i++) this.icons.put('icon.box', eq.x * TILE_SIZE + 8, eq.y * TILE_SIZE + 15 - i * 3, { depth: eq.y * TILE_SIZE + 20 + i });
   }
 
   /** A small countdown bar over a machine that is out of use: updates, or the engineer on the way. */
@@ -173,52 +175,32 @@ export class StatusRenderer {
 
   /** A box in the corridor with a question mark bobbing over it. */
   private drawLostBox(tx: number, ty: number, nowMs: number): void {
-    const g = this.g;
-    const x = tx * TILE_SIZE + 3;
-    const y = ty * TILE_SIZE + 5;
-    g.fillStyle(PALETTE.plum, 1).fillRect(x - 1, y - 1, 12, 10);
-    g.fillStyle(PALETTE.warmWood, 1).fillRect(x, y, 10, 8);
-    g.fillStyle(PALETTE.cream, 1).fillRect(x + 4, y, 2, 8);
-    const bob = Math.floor(nowMs / 350) % 2;
-    const qx = x + 2;
-    const qy = y - 11 - bob;
-    g.fillStyle(PALETTE.plum, 1).fillRect(qx - 1, qy - 1, 8, 10);
-    g.fillStyle(PALETTE.butter, 1).fillRect(qx, qy, 6, 8);
-    g.fillStyle(PALETTE.plum, 1).fillRect(qx + 1, qy + 1, 4, 1).fillRect(qx + 4, qy + 2, 1, 2).fillRect(qx + 2, qy + 4, 2, 1).fillRect(qx + 2, qy + 6, 1, 1);
+    const cx = tx * TILE_SIZE + 8;
+    const base = ty * TILE_SIZE + 14;
+    this.icons.put('icon.box', cx, base, { depth: base });
+    this.icons.put('icon.question', cx, base - 9 - (Math.floor(nowMs / 350) % 2));
   }
 
-  /** Quince's cake on the corridor floor: a plate, two layers and a candle that flickers. */
+  /** Quince's cake on the corridor floor, with its candle flickering. */
   private drawCake(tx: number, ty: number, nowMs: number): void {
-    const g = this.g;
-    const x = tx * TILE_SIZE + 2;
-    const y = ty * TILE_SIZE + 6;
-    g.fillStyle(PALETTE.plum, 1).fillRect(x - 1, y - 1, 14, 11);
-    g.fillStyle(PALETTE.paper, 1).fillRect(x, y + 7, 12, 2);
-    g.fillStyle(PALETTE.cocoa, 1).fillRect(x + 1, y + 3, 10, 4);
-    g.fillStyle(PALETTE.dustyRose, 1).fillRect(x + 1, y, 10, 3);
-    g.fillStyle(PALETTE.butter, 1).fillRect(x + 5, y - 4, 2, 4);
-    if (Math.floor(nowMs / 250) % 2 === 0) g.fillStyle(PALETTE.mustard, 1).fillRect(x + 5, y - 6, 2, 2);
-    else g.fillStyle(PALETTE.terracotta, 1).fillRect(x + 5, y - 5, 2, 1);
+    this.icons.put(Math.floor(nowMs / 250) % 2 === 0 ? 'icon.cake' : 'icon.cake2', tx * TILE_SIZE + 8, ty * TILE_SIZE + 15, { depth: ty * TILE_SIZE + 15 });
   }
 
   /** The gold star Tock puts on the lab door. */
   private drawStar(state: GameState): void {
-    const g = this.g;
     for (const p of PLOTS) {
       if (state.plots[p.id]?.roomType !== 'lab' || !state.plots[p.id]?.owned) continue;
-      const cx = p.door.x * TILE_SIZE + 8;
-      const cy = p.door.y * TILE_SIZE + 3;
-      g.fillStyle(PALETTE.plum, 1).fillRect(cx - 6, cy - 1, 12, 4).fillRect(cx - 2, cy - 5, 4, 12).fillRect(cx - 4, cy - 3, 8, 8);
-      g.fillStyle(PALETTE.mustard, 1).fillRect(cx - 5, cy, 10, 2).fillRect(cx - 1, cy - 4, 2, 10).fillRect(cx - 3, cy - 2, 6, 6);
-      g.fillStyle(PALETTE.butter, 1).fillRect(cx - 1, cy - 1, 2, 2);
+      this.icons.put('icon.star', p.door.x * TILE_SIZE + 8, p.door.y * TILE_SIZE + 12);
     }
+  }
+
+  /** Two wisps of steam, taking turns. */
+  private steam(x: number, y: number, nowMs: number): void {
+    this.icons.put(Math.floor(nowMs / 450) % 2 === 0 ? 'icon.steam1' : 'icon.steam2', x, y);
   }
 
   private drawWarning(eq: Equipment, nowMs: number): void {
     if (Math.floor(nowMs / 600) % 2 === 1) return;
-    const x = eq.x * TILE_SIZE + TILE_SIZE - 5;
-    const y = eq.y * TILE_SIZE - 3;
-    this.g.fillStyle(PALETTE.plum, 1).fillRect(x - 1, y - 1, 6, 6);
-    this.g.fillStyle(PALETTE.berry, 1).fillRect(x, y, 4, 4);
+    this.icons.put('icon.exclaim', eq.x * TILE_SIZE + TILE_SIZE - 3, eq.y * TILE_SIZE + 2);
   }
 }
