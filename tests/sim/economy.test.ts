@@ -20,7 +20,7 @@ describe('funds and the end of the day', () => {
     const events = run(s, TICKS_PER_DAY);
     expect(s.clock.day).toBe(2);
     expect(s.funds).toBe(500 + CORE_FUNDING);
-    expect(events.filter((e) => e.type === 'EndOfDay')).toEqual([{ type: 'EndOfDay', day: 1, funding: CORE_FUNDING, funds: 600 }]);
+    expect(events.filter((e) => e.type === 'EndOfDay')).toEqual([{ type: 'EndOfDay', day: 1, funding: CORE_FUNDING, salaries: [], salaryTotal: 0, covered: false, funds: 600 }]);
   });
 });
 

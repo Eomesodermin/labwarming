@@ -8,7 +8,10 @@ import { ORDERS, ORDER_IDS } from '../content/orders';
 import { PLAYER_ID, type Command } from './commands';
 import { baseTile } from './grid';
 import { coldCapacity, coldUsed, dryCapacity, dryUsed, plotOf, wasteCapacity } from './stock';
-import { atStation, facedStation, jobBlocker, stationHasMenu } from './systems/jobs';
+import { atStation, facedStation, startBlocker, stationHasMenu } from './systems/jobs';
+import { orderBlocker, spendBlocker } from './funds';
+import { HIREABLE_ROLES, ROLES, TRAITS, ENERGY, MOOD, type PortraitColour, type StaffRole, type TraitId } from '../content/staff';
+import { hireBlocker, isOnBreak, roleBlocker, staffAgents } from './systems/staff';
 import { slotsOf } from './systems/cultures';
 import { autoclaveCapacity } from './systems/machines';
 import type { Agent, Equipment, GameState, Plot } from './types';
@@ -115,7 +118,7 @@ export function stationPrompt(state: GameState): StationPrompt | null {
         key: i === 0 ? 'E' : 'Q',
         jobId: d.id,
         name: d.name,
-        reason: jobBlocker(state, d, eq),
+        reason: startBlocker(state, d, eq, PLAYER_ID),
       }));
   const job = player.jobId ? state.jobs[player.jobId] : undefined;
   const working =
@@ -175,7 +178,7 @@ function jobEntry(state: GameState, eq: Equipment, jobId: keyof typeof JOBS, det
     group: 'Work',
     label: def.name,
     detail,
-    reason: jobBlocker(state, def, eq),
+    reason: startBlocker(state, def, eq, PLAYER_ID),
     command: { type: 'Interact', stationId: eq.id, jobId },
   };
 }
@@ -193,7 +196,7 @@ export function stationMenu(state: GameState, eq: Equipment): StationMenu | null
           group: 'Repair',
           label: 'Repair the fridge',
           detail: `${FRIDGE_REPAIR_COST} Funds`,
-          reason: state.funds < FRIDGE_REPAIR_COST ? `Needs ${FRIDGE_REPAIR_COST} Funds` : null,
+          reason: spendBlocker(state, FRIDGE_REPAIR_COST),
           command: { type: 'RepairEquipment', equipmentId: eq.id },
         },
       ],
@@ -213,7 +216,7 @@ export function stationMenu(state: GameState, eq: Equipment): StationMenu | null
         group: 'Order',
         label: o.name,
         detail: `${o.price} Funds, ${o.qty} ${ITEM_NAMES[o.item].toLowerCase()}`,
-        reason: state.funds < o.price ? `Needs ${o.price} Funds` : null,
+        reason: orderBlocker(state, o.price),
         command: { type: 'PlaceOrder', orderId: id },
       });
     }
@@ -238,4 +241,113 @@ export function unreadCount(state: GameState): number {
 /** Number of rooms owned. */
 export function roomsOwned(state: GameState): number {
   return Object.values(state.plots).filter((p) => p.owned).length;
+}
+
+export interface StaffRow {
+  id: string;
+  name: string;
+  role: StaffRole;
+  roleName: string;
+  trait: TraitId;
+  traitName: string;
+  traitText: string;
+  colour: PortraitColour;
+  salary: number;
+  energy: number;
+  mood: number;
+  /** What they are doing right now, in words. */
+  doing: string;
+  onBreak: boolean;
+  tired: boolean;
+  gloomy: boolean;
+}
+
+function doingText(state: GameState, a: Agent): string {
+  const st = a.staff;
+  if (!st) return '';
+  if (st.restTicks > 0) return 'Resting, no coffee machine';
+  const job = a.jobId ? state.jobs[a.jobId] : undefined;
+  if (!job) return st.energy <= ENERGY.breakAt ? 'Looking for a break' : 'Looking for something to do';
+  const name = JOBS[job.defId as keyof typeof JOBS]?.name ?? job.defId;
+  const eq = state.equipment[job.stationId];
+  const there = eq ? atStation(a, eq) : false;
+  if (job.defId === 'coffeeBreak') return there ? 'On a coffee break' : 'Walking to the coffee machine';
+  return there ? name : `Walking to: ${name}`;
+}
+
+/** Everyone on the payroll, for the staff panel. */
+export function staffRows(state: GameState): StaffRow[] {
+  return staffAgents(state).map((a) => {
+    const st = a.staff as NonNullable<Agent['staff']>;
+    const trait = TRAITS[st.trait];
+    return {
+      id: a.id,
+      name: st.name,
+      role: st.role,
+      roleName: ROLES[st.role].name,
+      trait: st.trait,
+      traitName: trait.name,
+      traitText: trait.text,
+      colour: st.colour,
+      salary: st.salary,
+      energy: Math.round(st.energy),
+      mood: Math.round(st.mood),
+      doing: doingText(state, a),
+      onBreak: isOnBreak(state, a),
+      tired: st.energy <= ENERGY.breakAt,
+      gloomy: st.mood < MOOD.cloudBelow,
+    };
+  });
+}
+
+export interface HireRole {
+  role: StaffRole;
+  name: string;
+  fee: number;
+  salary: number;
+  speed: number;
+  blurb: string;
+  /** Why the whole role is locked (or full), or null. */
+  locked: string | null;
+  hired: number;
+  candidates: Array<{
+    id: string;
+    name: string;
+    trait: TraitId;
+    traitName: string;
+    traitText: string;
+    colour: PortraitColour;
+    /** Why this person cannot be hired right now (Funds), or null. */
+    blocker: string | null;
+  }>;
+}
+
+/** The hire panel: three candidates per role, with the reason when a role is locked. */
+export function hireOptions(state: GameState): HireRole[] {
+  return HIREABLE_ROLES.map((role) => {
+    const def = ROLES[role];
+    const locked = roleBlocker(state, role);
+    const blocker = hireBlocker(state, role);
+    return {
+      role,
+      name: def.name,
+      fee: def.fee,
+      salary: def.salary,
+      speed: def.speed,
+      blurb: def.blurb,
+      locked,
+      hired: staffAgents(state).filter((a) => a.staff?.role === role).length,
+      candidates: state.candidates
+        .filter((c) => c.role === role)
+        .map((c) => ({
+          id: c.id,
+          name: c.name,
+          trait: c.trait,
+          traitName: TRAITS[c.trait].name,
+          traitText: TRAITS[c.trait].text,
+          colour: c.colour,
+          blocker,
+        })),
+    };
+  });
 }

@@ -2,6 +2,7 @@
 // Entities refer to each other by id.
 
 import type { Stock } from '../content/items';
+import type { PortraitColour, StaffRole, TraitId } from '../content/staff';
 
 export type Dir = 'up' | 'down' | 'left' | 'right';
 
@@ -60,7 +61,34 @@ export interface Cycle {
   ticksLeft: number;
 }
 
-export type AgentKind = 'player';
+export type AgentKind = 'player' | StaffRole;
+
+/** What only staff have: who they are, and their two needs. */
+export interface StaffData {
+  name: string;
+  role: StaffRole;
+  trait: TraitId;
+  colour: PortraitColour;
+  /** Funds per day, fixed when hired. */
+  salary: number;
+  /** 0 to 100. */
+  energy: number;
+  /** Ticks of work that have not yet cost a point of Energy. */
+  workAcc: number;
+  /** 0 to 100, recalculated every 10 s. */
+  mood: number;
+  /** Ticks left of a rest taken in place (no coffee machine to walk to). */
+  restTicks: number;
+}
+
+/** Someone who can be hired. The list refreshes each morning. */
+export interface Candidate {
+  id: string;
+  role: StaffRole;
+  name: string;
+  trait: TraitId;
+  colour: PortraitColour;
+}
 
 export interface Agent {
   id: string;
@@ -79,6 +107,8 @@ export interface Agent {
   jobId: string | null;
   /** A station to start the default job at once the agent arrives (set by clicking a station). */
   pendingStation: string | null;
+  /** Null for the player. */
+  staff: StaffData | null;
 }
 
 export type CultureStatus = 'growing' | 'ready' | 'contaminated';
@@ -90,6 +120,8 @@ export interface Culture {
   /** Ticks left to grow. */
   growTicksLeft: number;
   status: CultureStatus;
+  /** Split by someone with Golden Hands: half the contamination chance. */
+  golden?: boolean;
 }
 
 export interface Job {
@@ -192,6 +224,8 @@ export interface GameState {
   agents: Record<string, Agent>;
   jobs: Record<string, Job>;
   cultures: Culture[];
+  /** People who can be hired today, three per role. */
+  candidates: Candidate[];
   stats: Stats;
   /** Bumped on any change that affects walkability. Path caches are keyed by it. */
   gridVersion: number;

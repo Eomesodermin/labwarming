@@ -39,6 +39,21 @@ export const MIGRATIONS: readonly Migration[] = [
       return state;
     },
   },
+  {
+    // Version 2 to 3 (milestone 5): agents gain a staff record (null for the player), the state gains
+    // a candidates list (the game draws today's candidates on the next tick) and cultures may be golden.
+    from: 2,
+    run: (state) => {
+      const agents = state['agents'];
+      if (typeof agents === 'object' && agents !== null) {
+        for (const a of Object.values(agents as Record<string, Raw>)) {
+          if (a['staff'] === undefined) a['staff'] = null;
+        }
+      }
+      if (state['candidates'] === undefined) state['candidates'] = [];
+      return state;
+    },
+  },
 ];
 
 /** Runs every step from the save's version to the target version. The input is not changed. */

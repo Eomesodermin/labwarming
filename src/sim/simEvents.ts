@@ -1,11 +1,20 @@
 import type { Speed } from './types';
 
+/** One person's pay on the end-of-day card. */
+export interface SalaryLine {
+  name: string;
+  role: string;
+  amount: number;
+}
+
 /** The event bus. `step` returns the events of one tick. They are for presentation only. */
 export type SimEvent =
   | { type: 'CommandRejected'; reason: string }
   | { type: 'SpeedChanged'; speed: Speed }
   | { type: 'DayEnded'; day: number }
-  | { type: 'EndOfDay'; day: number; funding: number; funds: number }
+  | { type: 'EndOfDay'; day: number; funding: number; salaries: SalaryLine[]; salaryTotal: number; covered: boolean; funds: number }
+  | { type: 'StaffHired'; agentId: string; name: string }
+  | { type: 'StaffLeft'; agentId: string; name: string }
   | { type: 'EmailReceived'; emailId: string; kind: string; subject: string }
   | { type: 'StationReached'; stationId: string }
   | { type: 'Purchase'; what: string }

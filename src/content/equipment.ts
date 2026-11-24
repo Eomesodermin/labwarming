@@ -138,8 +138,8 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
     label: 'COF',
     w: 1,
     h: 1,
-    // Seconds for a break. Mood arrives with staff in milestone 5.
-    stats: { breakSec: [20, 12], mood: [0, 10] },
+    // Seconds for a break, and the Mood bonus while the machine exists.
+    stats: { breakSec: [20, 12], mood: [10, 10] },
     price: 150,
     upgrades: [{ price: 250 }],
     category: 'equipment',

@@ -11,6 +11,7 @@ import { culturesSystem } from './systems/cultures';
 import { jobsSystem } from './systems/jobs';
 import { machinesSystem } from './systems/machines';
 import { movementSystem } from './systems/movement';
+import { needsSystem, staffAiSystem, staffWorkSystem } from './systems/staff';
 
 /**
  * Advances the game by one tick and returns that tick's events. Mutates the state.
@@ -20,7 +21,7 @@ import { movementSystem } from './systems/movement';
  *
  * System order (design doc 8.6): commands, clock, director, orders, cultures, machines,
  * staffAi, movement, jobs, needs, cleanliness, papers, grants, visitors, inspection,
- * economy, goals, tutorial. Only the systems that exist so far are called, in that order (clock, director, orders, cultures, machines, movement, jobs, papers, grants, economy).
+ * economy, goals, tutorial. Only the systems that exist so far are called, in that order (clock, director, orders, cultures, machines, staffAi, movement, jobs, staff work, needs, papers, grants, economy).
  */
 export function step(state: GameState, commands: readonly Command[]): SimEvent[] {
   const events: SimEvent[] = [];
@@ -32,8 +33,11 @@ export function step(state: GameState, commands: readonly Command[]): SimEvent[]
   ordersSystem(state, events);
   culturesSystem(state, events);
   machinesSystem(state, events);
+  staffAiSystem(state);
   movementSystem(state);
   jobsSystem(state, events);
+  staffWorkSystem(state, events);
+  needsSystem(state);
   papersSystem(state, events);
   grantsSystem(state, events);
   if (dayEnded) endOfDay(state, endedDay, events);

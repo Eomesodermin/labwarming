@@ -3,6 +3,8 @@ import { ORDERS, isKnownOrder } from '../content/orders';
 import { coldCapacity, coldUsed, dryCapacity, dryUsed, plotOf, wasteCapacity } from './stock';
 import { deliveryTicks } from './systems/orders';
 import { atStation, facedStation, pressSweetSpot, startJob } from './systems/jobs';
+import { hireStaff, partWays } from './systems/staff';
+import { orderBlocker, spendBlocker } from './funds';
 import { findPathToAny, findPath } from './pathfinding';
 import { EQUIPMENT } from '../content/equipment';
 import { ROOMS } from '../content/rooms';
@@ -27,7 +29,9 @@ export type Command =
   | { type: 'PlaceEquipment'; defId: string; x: number; y: number; rot: Rot }
   | { type: 'MoveEquipment'; equipmentId: string; x: number; y: number; rot: Rot }
   | { type: 'SellEquipment'; equipmentId: string }
-  | { type: 'UpgradeEquipment'; equipmentId: string };
+  | { type: 'UpgradeEquipment'; equipmentId: string }
+  | { type: 'HireStaff'; candidateId: string }
+  | { type: 'PartWays'; agentId: string };
 
 export const PLAYER_ID = 'player';
 
@@ -125,7 +129,8 @@ function sweetSpotPress(state: GameState, events: SimEvent[]): void {
 function placeOrder(state: GameState, orderId: string, events: SimEvent[]): void {
   if (!isKnownOrder(orderId)) return reject(events, 'Unknown order');
   const def = ORDERS[orderId];
-  if (state.funds < def.price) return reject(events, `Needs ${def.price} Funds`);
+  const why = orderBlocker(state, def.price);
+  if (why) return reject(events, why);
   state.funds -= def.price;
   state.orders.push({ id: `o${state.nextId++}`, orderId, ticksLeft: deliveryTicks() });
   state.stats.ordersPlaced += 1;
@@ -136,7 +141,8 @@ function placeOrder(state: GameState, orderId: string, events: SimEvent[]): void
 function repairEquipment(state: GameState, equipmentId: string, events: SimEvent[]): void {
   const eq = state.equipment[equipmentId];
   if (!eq || !eq.broken) return reject(events, 'Nothing to repair');
-  if (state.funds < FRIDGE_REPAIR_COST) return reject(events, `Needs ${FRIDGE_REPAIR_COST} Funds`);
+  const why = spendBlocker(state, FRIDGE_REPAIR_COST);
+  if (why) return reject(events, why);
   state.funds -= FRIDGE_REPAIR_COST;
   eq.broken = false;
   events.push({ type: 'Purchase', what: 'Repair' });
@@ -146,14 +152,14 @@ function repairEquipment(state: GameState, equipmentId: string, events: SimEvent
 /** Call after anything that changes walkability: new rooms, placed, moved or sold equipment. */
 function gridChanged(state: GameState): void {
   state.gridVersion += 1;
-  const player = state.agents[PLAYER_ID];
-  if (!player) return;
-  // A walk that now crosses something is stopped. The player stays on the tile they stand on.
-  if (player.path.some((p) => !isWalkable(state, p.x, p.y))) {
-    player.path = [];
-    player.moveProgress = 0;
-    player.arriveFacing = null;
-    player.pendingStation = null;
+  // A walk that now crosses something is stopped. Everyone stays on the tile they stand on.
+  // Staff whose way is gone find a new one on their next tick.
+  for (const a of Object.values(state.agents)) {
+    if (!a.path.some((p) => !isWalkable(state, p.x, p.y))) continue;
+    a.path = [];
+    a.moveProgress = 0;
+    a.arriveFacing = null;
+    a.pendingStation = null;
   }
 }
 
@@ -188,7 +194,8 @@ function placeEquipment(state: GameState, cmd: Extract<Command, { type: 'PlaceEq
   if (blocker) return reject(events, blocker);
   const def = EQUIPMENT[cmd.defId];
   const price = def?.price ?? 0;
-  if (state.funds < price) return reject(events, `Needs ${price} Funds`);
+  const why = spendBlocker(state, price);
+  if (why) return reject(events, why);
   state.funds -= price;
   newEquipment(state, cmd.defId, cmd.x, cmd.y, cmd.rot);
   gridChanged(state);
@@ -286,6 +293,10 @@ export function applyCommand(state: GameState, cmd: Command, events: SimEvent[])
       return sellEquipment(state, cmd.equipmentId, events);
     case 'UpgradeEquipment':
       return upgradeEquipment(state, cmd.equipmentId, events);
+    case 'HireStaff':
+      return hireStaff(state, cmd.candidateId, events);
+    case 'PartWays':
+      return partWays(state, cmd.agentId, events);
     case 'TogglePause':
       return setSpeed(state, state.clock.speed === 0 ? state.clock.resumeSpeed : 0, events);
   }

@@ -4,6 +4,7 @@ import { PAPER, PRESENTATION } from '../../content/economy';
 import { ITEM_NAMES } from '../../content/items';
 import { JOBS, TUNING, jobsForStation, type JobDef } from '../../content/jobs';
 import { ORDERS, isKnownOrder } from '../../content/orders';
+import { ENERGY } from '../../content/staff';
 import { OFFICE_WRITE_SPEED } from '../../content/rooms';
 import { ROT_FACING, equipmentAt, DIR_VECTORS, frontTiles, opposite } from '../grid';
 import { nextFloat } from '../rng';
@@ -13,7 +14,7 @@ import { addStock, binFull, coldFree, dryFree, freeSpaceFor, plotOf, storageFull
 import type { Agent, Culture, Equipment, GameState, Job } from '../types';
 import { cleanRoom, dirtyRoom } from './cleanliness';
 import { autoclaveCapacity, startCycle } from './machines';
-import { incubatorWithFreeSlot } from './cultures';
+import { freeSlots, incubatorWithFreeSlot } from './cultures';
 import { applyForGrant, grantBlocker, openGrant } from './grants';
 import { acceptRevision, submitPaper } from './papers';
 
@@ -52,27 +53,27 @@ export function facedStation(state: GameState, agent: Agent): Equipment | null {
 }
 
 /** Why a job cannot be done right now, or null if it can. Checks inputs and room for outputs. */
-export function jobBlocker(state: GameState, def: JobDef, eq: Equipment): string | null {
+export function jobBlocker(state: GameState, def: JobDef, eq: Equipment, pending = 0): string | null {
   const s = state.stock;
   const plotId = plotOf(eq);
   switch (def.id) {
     case 'splitCells':
-      if (s.cleanFlasks < 1) return 'Needs 1 clean flask';
-      if (s.media < 1) return 'Needs 1 media';
-      if (!incubatorWithFreeSlot(state)) return 'Needs a free incubator slot';
+      if (s.cleanFlasks <= pending) return 'Needs 1 clean flask';
+      if (s.media <= pending) return 'Needs 1 media';
+      if (freeSlots(state) <= pending || !incubatorWithFreeSlot(state)) return 'Needs a free incubator slot';
       return null;
     case 'runExperiment':
-      if (!state.cultures.some((c) => c.status === 'ready')) return 'Needs 1 ready culture';
-      if (s.assayKits < 1) return 'Needs 1 assay kit';
+      if (state.cultures.filter((c) => c.status === 'ready').length <= pending) return 'Needs 1 ready culture';
+      if (s.assayKits <= pending) return 'Needs 1 assay kit';
       if (!plotId || binFull(state, plotId)) return 'The waste bin is full. Take it out first';
       return null;
     case 'makeMedia':
-      if (s.mediaPowder < 1) return 'Needs 1 media powder';
-      if (coldFree(state) < TUNING.mediaPerPowder) return `Needs ${TUNING.mediaPerPowder} free spaces in the fridge`;
+      if (s.mediaPowder <= pending) return 'Needs 1 media powder';
+      if (coldFree(state) < TUNING.mediaPerPowder * (pending + 1)) return `Needs ${TUNING.mediaPerPowder} free spaces in the fridge`;
       return null;
     case 'washFlask':
-      if (s.dirtyFlasks < 1) return 'Needs 1 dirty flask';
-      if (dryFree(state) < 1) return 'The shelf is full';
+      if (s.dirtyFlasks <= pending) return 'Needs 1 dirty flask';
+      if (dryFree(state) <= pending) return 'The shelf is full';
       return null;
     case 'takeOutWaste':
       if (!plotId || (state.plots[plotId]?.waste ?? 0) < 1) return 'The bin is empty';
@@ -86,7 +87,7 @@ export function jobBlocker(state: GameState, def: JobDef, eq: Equipment): string
       return null;
     case 'putAwayOrder': {
       const first = state.boxes[0];
-      if (!first) return 'No boxes waiting';
+      if (!first || state.boxes.length <= pending) return 'No boxes waiting';
       if (state.boxes.some((b) => boxFits(state, b.orderId))) return null;
       const item = isKnownOrder(first.orderId) ? ORDERS[first.orderId].item : 'assayKits';
       return storageFullReason(state, item);
@@ -112,6 +113,58 @@ export function jobBlocker(state: GameState, def: JobDef, eq: Equipment): string
   }
 }
 
+/** Staff who are working a job, or walking to it, hold their station. The player holds one while standing at it. */
+export function holdsStation(state: GameState, job: Job): boolean {
+  const w = state.agents[job.workerId];
+  if (!w || w.jobId !== job.id) return false;
+  if (w.kind !== 'player') return true;
+  const eq = state.equipment[job.stationId];
+  return !!eq && atStation(w, eq);
+}
+
+/** Jobs that hold something right now: a station, and the inputs they will use. */
+export function activeJobs(state: GameState): Job[] {
+  return Object.values(state.jobs).filter((j) => holdsStation(state, j));
+}
+
+/** True when the worker has arrived and is in front of the station (not still walking there). */
+function arrived(state: GameState, job: Job): boolean {
+  const w = state.agents[job.workerId];
+  const eq = state.equipment[job.stationId];
+  return !!w && !!eq && atStation(w, eq);
+}
+
+/** Ends a job that nobody finished: the worker is freed to pick something else. */
+export function releaseJob(state: GameState, job: Job): void {
+  delete state.jobs[job.id];
+  const w = state.agents[job.workerId];
+  if (w && w.jobId === job.id) {
+    w.jobId = null;
+    if (w.kind !== 'player') {
+      w.path = [];
+      w.arriveFacing = null;
+    }
+  }
+}
+
+/**
+ * Why this worker cannot start the job now, or null. On top of `jobBlocker` it checks the
+ * reservations: another worker using the station (the player may take a station that staff are
+ * only walking to), and inputs that other jobs in progress will use.
+ */
+export function startBlocker(state: GameState, def: JobDef, eq: Equipment, workerId: string): string | null {
+  const others = activeJobs(state).filter((j) => j.workerId !== workerId);
+  if (def.id !== 'coffeeBreak') {
+    const holder = others.find((j) => j.stationId === eq.id);
+    if (holder && (workerId !== PLAYER || arrived(state, holder) || holder.workerId === PLAYER)) {
+      const who = state.agents[holder.workerId]?.staff?.name ?? 'Someone';
+      return `${who} is using it`;
+    }
+  }
+  const pending = others.filter((j) => j.defId === def.id && j.stationId !== eq.id).length;
+  return jobBlocker(state, def, eq, pending);
+}
+
 function boxFits(state: GameState, orderId: string): boolean {
   return isKnownOrder(orderId) && freeSpaceFor(state, ORDERS[orderId].item) >= 1;
 }
@@ -120,16 +173,18 @@ function findJob(state: GameState, workerId: string, stationId: string, defId: s
   return Object.values(state.jobs).find((j) => j.workerId === workerId && j.stationId === stationId && j.defId === defId);
 }
 
-function createJob(state: GameState, def: JobDef, eq: Equipment, workerId: string): Job {
+export function createJob(state: GameState, def: JobDef, eq: Equipment, workerId: string): Job {
   let total = secondsToTicks(jobSeconds(def, eq, state));
-  if (def.id === 'washFlask' && state.flags['washBoost'] === true) {
+  const byPlayer = workerId === PLAYER;
+  if (byPlayer && def.id === 'washFlask' && state.flags['washBoost'] === true) {
     total = Math.max(1, Math.round(total * TUNING.sweetWashNext));
     state.flags['washBoost'] = false;
   }
+  // Only the player gets a sweet spot. Staff jobs do not draw from the random stream.
   const z = TUNING.sweetZone;
-  const startFrac = z.minStart + nextFloat(state) * (z.maxStart - z.minStart);
-  const sweetStart = Math.round(total * startFrac);
-  const sweetEnd = Math.min(total, sweetStart + Math.max(2, Math.round(total * z.width)));
+  const startFrac = byPlayer ? z.minStart + nextFloat(state) * (z.maxStart - z.minStart) : 0;
+  const sweetStart = byPlayer ? Math.round(total * startFrac) : 0;
+  const sweetEnd = byPlayer ? Math.min(total, sweetStart + Math.max(2, Math.round(total * z.width))) : 0;
   const job: Job = {
     id: `j${state.nextId++}`,
     defId: def.id,
@@ -162,10 +217,14 @@ export function startJob(state: GameState, eq: Equipment, jobId: string | undefi
     ? defs.find((d) => d.id === jobId)
     : (defs.find((d) => jobBlocker(state, d, eq) === null) ?? defs[0]);
   if (!def) return;
-  const blocker = jobBlocker(state, def, eq);
+  const blocker = startBlocker(state, def, eq, PLAYER);
   if (blocker) {
     events.push({ type: 'CommandRejected', reason: blocker });
     return;
+  }
+  // Staff who are only walking to this station pick another job (design doc 8.7).
+  for (const j of Object.values(state.jobs)) {
+    if (j.stationId === eq.id && j.workerId !== PLAYER && def.id !== 'coffeeBreak') releaseJob(state, j);
   }
   const job = findJob(state, PLAYER, eq.id, def.id) ?? createJob(state, def, eq, PLAYER);
   player.jobId = job.id;
@@ -190,7 +249,13 @@ function removeCulture(state: GameState, c: Culture): void {
 }
 
 /** Applies a finished job's result. Inputs were checked again just before. */
-function complete(state: GameState, job: Job, def: JobDef, eq: Equipment, events: SimEvent[]): void {
+export function completeJob(state: GameState, job: Job, def: JobDef, eq: Equipment, events: SimEvent[]): void {
+  const worker = state.agents[job.workerId];
+  const member = worker?.staff ?? null;
+  // Staff work quietly: no toasts for their jobs.
+  const say = (text: string): void => {
+    if (!member) toast(events, text);
+  };
   const s = state.stock;
   const plotId = plotOf(eq);
   const plot = plotId ? state.plots[plotId] : undefined;
@@ -202,7 +267,9 @@ function complete(state: GameState, job: Job, def: JobDef, eq: Equipment, events
       s.media -= 1;
       let grow = secondsToTicks(tierStat('incubator', 'growSec', inc.tier));
       if (hit) grow = Math.max(1, grow - secondsToTicks(TUNING.sweetGrowSec));
-      state.cultures.push({ id: `c${state.nextId++}`, incubatorId: inc.id, growTicksLeft: grow, status: 'growing' });
+      const culture: Culture = { id: `c${state.nextId++}`, incubatorId: inc.id, growTicksLeft: grow, status: 'growing' };
+      if (member?.trait === 'goldenHands') culture.golden = true;
+      state.cultures.push(culture);
       state.stats.splits += 1;
       break;
     }
@@ -215,14 +282,14 @@ function complete(state: GameState, job: Job, def: JobDef, eq: Equipment, events
       const gain = tierStat('bench', 'experimentData', eq.tier) + (hit ? TUNING.sweetExperimentData : 0);
       state.data += gain;
       state.stats.experiments += 1;
-      toast(events, `+${gain} Data`);
+      say(`+${gain} Data`);
       break;
     }
     case 'makeMedia': {
       s.mediaPowder -= 1;
       const made = addStock(state, 'media', TUNING.mediaPerPowder + (hit ? TUNING.sweetMedia : 0));
       state.stats.mediaMade += made;
-      toast(events, `+${made} media`);
+      say(`+${made} media`);
       break;
     }
     case 'washFlask':
@@ -231,18 +298,18 @@ function complete(state: GameState, job: Job, def: JobDef, eq: Equipment, events
       state.stats.washes += 1;
       if (hit) {
         state.flags['washBoost'] = true;
-        toast(events, 'The next flask will be quick');
+        say('The next flask will be quick');
       }
       break;
     case 'takeOutWaste':
       if (plot) plot.waste = 0;
       state.stats.wasteTaken += 1;
-      toast(events, 'Waste taken out');
+      say('Waste taken out');
       break;
     case 'tidyUp':
       cleanRoom(state, plotId, TUNING.tidyGain + (hit ? TUNING.sweetTidy : 0));
       state.stats.tidies += 1;
-      toast(events, 'Sparkling');
+      say('Sparkling');
       break;
     case 'binCulture': {
       const bad = state.cultures.find((c) => c.incubatorId === eq.id && c.status === 'contaminated') as Culture;
@@ -260,13 +327,13 @@ function complete(state: GameState, job: Job, def: JobDef, eq: Equipment, events
       if (box.qty <= 0) state.boxes = state.boxes.filter((b) => b !== box);
       state.stats.boxesPutAway += 1;
       const left = box.qty > 0 ? `, ${box.qty} still waiting` : '';
-      toast(events, `Put away ${added} ${ITEM_NAMES[od.item].toLowerCase()}${left}`);
+      say(`Put away ${added} ${ITEM_NAMES[od.item].toLowerCase()}${left}`);
       break;
     }
     case 'writePaper': {
       state.data -= PAPER.data;
       const paper = submitPaper(state);
-      toast(events, `Paper ${paper.number} sent to review`);
+      say(`Paper ${paper.number} sent to review`);
       break;
     }
     case 'revisePaper': {
@@ -280,7 +347,7 @@ function complete(state: GameState, job: Job, def: JobDef, eq: Equipment, events
       state.reputation += PRESENTATION.reputation;
       state.stats.presentations += 1;
       state.presentations += 1;
-      toast(events, `Presentation done! +${PRESENTATION.reputation} Reputation`);
+      say(`Presentation done! +${PRESENTATION.reputation} Reputation`);
       break;
     case 'writeGrant': {
       const grant = openGrant(state);
@@ -291,15 +358,20 @@ function complete(state: GameState, job: Job, def: JobDef, eq: Equipment, events
       const n = Math.min(autoclaveCapacity(eq), s.dirtyFlasks);
       s.dirtyFlasks -= n;
       startCycle(eq, n);
-      toast(events, `Autoclave running with ${n} flask${n === 1 ? '' : 'es'}`);
+      say(`Autoclave running with ${n} flask${n === 1 ? '' : 'es'}`);
       break;
     }
     case 'coffeeBreak':
-      state.flags['coffeeTicks'] = secondsToTicks(TUNING.coffee.seconds);
-      toast(events, `Coffee! Work is ${Math.round(TUNING.coffee.speedBonus * 100)}% faster for ${TUNING.coffee.seconds} s`);
+      if (member) {
+        member.energy = ENERGY.max;
+        member.workAcc = 0;
+      } else {
+        state.flags['coffeeTicks'] = secondsToTicks(TUNING.coffee.seconds);
+        say(`Coffee! Work is ${Math.round(TUNING.coffee.speedBonus * 100)}% faster for ${TUNING.coffee.seconds} s`);
+      }
       break;
   }
-  if (def.dirties) dirtyRoom(state, plotId);
+  if (def.dirties && member?.trait !== 'tidy') dirtyRoom(state, plotId);
 }
 
 /**
@@ -352,6 +424,6 @@ export function jobsSystem(state: GameState, events: SimEvent[]): void {
     events.push({ type: 'CommandRejected', reason: blocker });
     return;
   }
-  complete(state, job, def, eq, events);
+  completeJob(state, job, def, eq, events);
   events.push({ type: 'JobCompleted', defId: def.id, stationId: eq.id });
 }

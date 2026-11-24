@@ -5,6 +5,7 @@ import { PLAYER_START, PLOTS, START_EQUIPMENT, START_PLOT } from '../content/map
 import { PLAYER_ID } from './commands';
 import { sendEmailRow } from './email';
 import { seedToState } from './rng';
+import { makeCandidates } from './systems/staff';
 import type { Equipment, GameState, Plot } from './types';
 
 export function createInitialState(seed: number): GameState {
@@ -35,6 +36,7 @@ export function createInitialState(seed: number): GameState {
     equipment: {},
     jobs: {},
     cultures: [],
+    candidates: [],
     stats: { ordersPlaced: 0, papersWritten: 0, presentations: 0, boxesPutAway: 0, splits: 0, culturesGrown: 0, experiments: 0, washes: 0, mediaMade: 0, wasteTaken: 0, tidies: 0, binned: 0, sweetHits: 0, autoclaveCycles: 0, plotsBought: 0 },
     agents: {
       [PLAYER_ID]: {
@@ -48,6 +50,7 @@ export function createInitialState(seed: number): GameState {
         arriveFacing: null,
         jobId: null,
         pendingStation: null,
+        staff: null,
       },
     },
     gridVersion: 1,
@@ -60,6 +63,7 @@ export function createInitialState(seed: number): GameState {
     const eq: Equipment = { id, defId: e.defId, tier: e.tier, x: e.x, y: e.y, rot: e.rot, broken: e.broken === true, cycle: null };
     state.equipment[id] = eq;
   }
+  state.candidates = makeCandidates(state);
   sendEmailRow(state, 'pi_welcome');
   return state;
 }

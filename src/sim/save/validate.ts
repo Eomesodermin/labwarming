@@ -32,7 +32,7 @@ export function validateState(raw: unknown): GameState {
   }
 
   for (const k of ['plots', 'equipment', 'agents', 'jobs', 'grants', 'stats', 'flags']) need(isObj(s[k]), `${k} is missing`);
-  for (const k of ['cultures', 'papers', 'orders', 'boxes', 'inbox']) need(Array.isArray(s[k]), `${k} is missing`);
+  for (const k of ['cultures', 'papers', 'orders', 'boxes', 'inbox', 'candidates']) need(Array.isArray(s[k]), `${k} is missing`);
 
   for (const k of ['autoclaveCycles', 'plotsBought']) need(isNum((s['stats'] as Raw)[k]), `stats.${k}`);
   for (const p of Object.values(s['plots'] as Raw)) need(isObj(p) && isNum(p['cleanliness']) && isNum(p['waste']), 'a plot');
@@ -41,6 +41,16 @@ export function validateState(raw: unknown): GameState {
     const cycle = (e as Raw)['cycle'];
     need(cycle === null || (isObj(cycle) && isNum(cycle['flasks']) && isNum(cycle['ticksLeft'])), 'an autoclave cycle');
   }
+  for (const a of Object.values(s['agents'] as Raw)) {
+    need(isObj(a) && isNum(a['x']) && isNum(a['y']) && Array.isArray(a['path']), 'an agent');
+    const st = (a as Raw)['staff'];
+    need(
+      st === null ||
+        (isObj(st) && typeof st['name'] === 'string' && typeof st['role'] === 'string' && typeof st['trait'] === 'string' && isNum(st['energy']) && isNum(st['mood']) && isNum(st['salary']) && isNum(st['restTicks']) && isNum(st['workAcc'])),
+      'a staff member',
+    );
+  }
+  for (const c of s['candidates'] as unknown[]) need(isObj(c) && typeof c['id'] === 'string' && typeof c['role'] === 'string' && typeof c['trait'] === 'string', 'a candidate');
   const player = (s['agents'] as Raw)['player'];
   need(isObj(player) && isNum(player['x']) && isNum(player['y']) && Array.isArray(player['path']), 'the player');
   for (const j of Object.values(s['jobs'] as Raw)) {

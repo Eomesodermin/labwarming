@@ -112,6 +112,13 @@ describe('migration from version 1 (milestone 3 saves)', () => {
     const stats = raw['stats'] as Record<string, unknown>;
     delete stats['autoclaveCycles'];
     delete stats['plotsBought'];
+    return v2ToV1(raw);
+  }
+
+  /** Takes away what milestone 5 added, so the save looks like an older one. */
+  function v2ToV1(raw: Record<string, unknown>): Record<string, unknown> {
+    delete raw['candidates'];
+    for (const a of Object.values(raw['agents'] as Record<string, Record<string, unknown>>)) delete a['staff'];
     return raw;
   }
 
@@ -125,7 +132,9 @@ describe('migration from version 1 (milestone 3 saves)', () => {
   });
 
   it('gives back the same game as a new one with the same seed', () => {
-    expect(deserialize(JSON.stringify(m3Save()))).toEqual(newGame(5));
+    const expected = newGame(5);
+    expected.candidates = []; // the game draws today's candidates on the next tick
+    expect(deserialize(JSON.stringify(m3Save()))).toEqual(expected);
   });
 
   it('keeps a half-finished game playable and lets the old save build a room', () => {
@@ -154,3 +163,50 @@ describe('migration from version 1 (milestone 3 saves)', () => {
     expect(serialize(back)).toBe(serialize(s));
   });
 });
+
+describe('migration from version 2 (milestone 4 saves)', () => {
+  /** A milestone 4 save: schema 2, no staff record on agents, no candidates. */
+  function m4Save(): Record<string, unknown> {
+    const raw = JSON.parse(serialize(newGame(9))) as Record<string, unknown>;
+    raw['schemaVersion'] = 2;
+    delete raw['candidates'];
+    for (const a of Object.values(raw['agents'] as Record<string, Record<string, unknown>>)) delete a['staff'];
+    return raw;
+  }
+
+  it('is rejected by validation before migrating and accepted after', () => {
+    expect(() => validateState(m4Save())).toThrow();
+    const loaded = restoreState(m4Save(), 2);
+    expect(loaded.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(loaded.agents[PLAYER_ID]?.staff).toBeNull();
+    expect(loaded.candidates).toEqual([]);
+  });
+
+  it('draws the candidates on the next tick and lets the old save hire', () => {
+    const loaded = deserialize(JSON.stringify(m4Save()));
+    loaded.reputation = 10;
+    step(loaded, []);
+    expect(loaded.candidates).toHaveLength(9);
+    const cand = loaded.candidates.find((c) => c.role === 'technician');
+    step(loaded, [{ type: 'HireStaff', candidateId: cand?.id ?? '' }]);
+    expect(staffNames(loaded)).toEqual([cand?.name]);
+    expect(deserialize(serialize(loaded))).toEqual(loaded);
+  });
+
+  it('keeps hired staff through a save and load, and carries on the same way', () => {
+    const a = newGame(4);
+    a.reputation = 10;
+    const cand = a.candidates.find((c) => c.role === 'technician');
+    step(a, [{ type: 'HireStaff', candidateId: cand?.id ?? '' }]);
+    run(a, 300);
+    const b = deserialize(serialize(a));
+    expect(b).toEqual(a);
+    run(a, 1200);
+    run(b, 1200);
+    expect(serialize(b)).toBe(serialize(a));
+  });
+});
+
+function staffNames(s: ReturnType<typeof newGame>): string[] {
+  return Object.values(s.agents).flatMap((a) => (a.staff ? [a.staff.name] : []));
+}

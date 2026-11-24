@@ -3,6 +3,7 @@ import { SELL_REFUND } from '../content/economy';
 import { ENTRANCE, MAP_W, PLOTS, type PlotDef } from '../content/map';
 import { ROOMS, roomsAllowing } from '../content/rooms';
 import { footprintTiles, frontTiles, inBounds, baseTile, tileIndex, walkGrid } from './grid';
+import { spendBlocker } from './funds';
 import { plotOf } from './stock';
 import type { Equipment, GameState, Point, Rot, RoomTypeId } from './types';
 
@@ -95,9 +96,8 @@ export function placementBlocker(
   }
   if (tiles.some((t) => blocked.has(`${t.x},${t.y}`))) return 'Something is already there';
 
-  const player = state.agents['player'];
-  if (player) {
-    const stands = [{ x: player.x, y: player.y }, ...(player.path[0] ? [player.path[0]] : [])];
+  for (const a of Object.values(state.agents)) {
+    const stands = [{ x: a.x, y: a.y }, ...(a.path[0] ? [a.path[0]] : [])];
     if (tiles.some((t) => stands.some((s) => s.x === t.x && s.y === t.y))) return 'Someone is standing there';
   }
 
@@ -142,8 +142,7 @@ export function upgradeInfo(state: GameState, eq: Equipment): UpgradeInfo {
   if (!def || !next || eq.tier >= maxTier(eq.defId)) return { price: 0, blocker: 'Fully upgraded', hasNext: false };
   if (eq.broken) return { price: next.price, blocker: 'Repair it first', hasNext: true };
   if (next.rep !== undefined && state.reputation < next.rep) return { price: next.price, blocker: `Needs Reputation ${next.rep}`, hasNext: true };
-  if (state.funds < next.price) return { price: next.price, blocker: `Needs ${next.price} Funds`, hasNext: true };
-  return { price: next.price, blocker: null, hasNext: true };
+  return { price: next.price, blocker: spendBlocker(state, next.price), hasNext: true };
 }
 
 export interface RoomBlocker {
@@ -159,8 +158,7 @@ export function buyPlotBlocker(state: GameState, plotId: string, roomType: RoomT
   const room = ROOMS[roomType];
   if (state.reputation < room.unlockRep) return `Needs Reputation ${room.unlockRep}`;
   if (!room.available) return room.note;
-  if (state.funds < room.cost) return `Needs ${room.cost} Funds`;
-  return null;
+  return spendBlocker(state, room.cost);
 }
 
 /** Equipment with no free tile in front that the player can walk to from the entrance. */
