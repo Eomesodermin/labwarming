@@ -10,8 +10,6 @@ export interface Upgrade {
 export interface EquipmentDef {
   id: EquipmentDefId;
   name: string;
-  /** Short label drawn on the Stage A placeholder shape. */
-  label: string;
   /** Footprint at rotation 0 and 2. Rotations 1 and 3 swap width and height. */
   w: number;
   h: number;
@@ -32,7 +30,6 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
   bench: {
     id: 'bench',
     name: 'Bench',
-    label: 'BENCH',
     w: 2,
     h: 1,
     stats: { experimentSec: [15, 12, 10], experimentData: [10, 14, 20] },
@@ -43,7 +40,6 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
   hood: {
     id: 'hood',
     name: 'Hood',
-    label: 'HOOD',
     w: 2,
     h: 1,
     stats: { splitSec: [10, 7], contaminationMult: [1, 0.5] },
@@ -54,7 +50,6 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
   incubator: {
     id: 'incubator',
     name: 'Incubator',
-    label: 'INC',
     w: 1,
     h: 1,
     stats: { slots: [2, 4, 8], growSec: [45, 45, 35] },
@@ -65,7 +60,6 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
   fridge: {
     id: 'fridge',
     name: 'Fridge',
-    label: 'FRG',
     w: 1,
     h: 1,
     // Cold capacity once repaired. A broken fridge holds `brokenCapacity` instead.
@@ -77,7 +71,6 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
   shelf: {
     id: 'shelf',
     name: 'Shelf',
-    label: 'SHELF',
     w: 2,
     h: 1,
     stats: { capacity: [12, 24] },
@@ -88,7 +81,6 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
   sink: {
     id: 'sink',
     name: 'Sink',
-    label: 'SNK',
     w: 1,
     h: 1,
     stats: { washSec: [5, 3] },
@@ -99,7 +91,6 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
   bin: {
     id: 'bin',
     name: 'Waste bin',
-    label: 'BIN',
     w: 1,
     h: 1,
     stats: { capacity: [8, 16] },
@@ -107,11 +98,10 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
     upgrades: [{ price: 80 }],
     category: 'equipment',
   },
-  spray: { id: 'spray', name: 'Spray station', label: 'SPR', w: 1, h: 1, price: null, upgrades: [], category: 'fixed' },
+  spray: { id: 'spray', name: 'Spray station', w: 1, h: 1, price: null, upgrades: [], category: 'fixed' },
   desk: {
     id: 'desk',
     name: 'Desk',
-    label: 'DESK',
     w: 2,
     h: 1,
     // Writing speed: desk jobs take their normal time divided by this.
@@ -123,7 +113,6 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
   autoclave: {
     id: 'autoclave',
     name: 'Autoclave',
-    label: 'AUTO',
     w: 2,
     h: 1,
     // Flasks per cycle, seconds to load by hand, and seconds of unattended running.
@@ -135,7 +124,6 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
   coffee: {
     id: 'coffee',
     name: 'Coffee machine',
-    label: 'COF',
     w: 1,
     h: 1,
     // Seconds for a break, and the Mood bonus while the machine exists.
@@ -144,13 +132,12 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
     upgrades: [{ price: 250 }],
     category: 'equipment',
   },
-  sofa: { id: 'sofa', name: 'Sofa', label: 'SOFA', w: 2, h: 1, stats: { mood: [10] }, price: 100, upgrades: [], category: 'decor' },
-  plant: { id: 'plant', name: 'Plant', label: 'PLT', w: 1, h: 1, stats: { mood: [2] }, price: 30, upgrades: [], category: 'decor' },
+  sofa: { id: 'sofa', name: 'Sofa', w: 2, h: 1, stats: { mood: [10] }, price: 100, upgrades: [], category: 'decor' },
+  plant: { id: 'plant', name: 'Plant', w: 1, h: 1, stats: { mood: [2] }, price: 30, upgrades: [], category: 'decor' },
   // The Media Facility's unit. It makes media bottles, one at a time, from powder.
   mediaprep: {
     id: 'mediaprep',
     name: 'Media prep unit',
-    label: 'PREP',
     w: 2,
     h: 1,
     price: 400,
@@ -158,7 +145,7 @@ export const EQUIPMENT: Record<EquipmentDefId, EquipmentDef> = {
     category: 'equipment',
   },
   // The delivery bay in the corridor. Boxes wait here until someone puts them away.
-  bay: { id: 'bay', name: 'Delivery bay', label: 'BAY', w: 1, h: 1, price: null, upgrades: [], category: 'fixed' },
+  bay: { id: 'bay', name: 'Delivery bay', w: 1, h: 1, price: null, upgrades: [], category: 'fixed' },
 };
 
 /** The highest tier a piece of equipment can reach. */
