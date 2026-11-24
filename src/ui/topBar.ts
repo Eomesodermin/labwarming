@@ -1,6 +1,7 @@
 import type { GameHost } from '../host';
 import { BUILD_ID } from '../platform/buildInfo';
-import { formatClock, unreadCount } from '../sim/selectors';
+import { formatClock, goalProgress, unreadCount } from '../sim/selectors';
+import { ringSvg } from './labPanel';
 
 interface SpeedButton {
   el: HTMLButtonElement;
@@ -11,7 +12,7 @@ interface SpeedButton {
 export function mountTopBar(
   root: HTMLElement,
   host: GameHost,
-  actions: { note: () => void; inbox: () => void; settings: () => void; build: () => void; staff: () => void },
+  actions: { note: () => void; inbox: () => void; settings: () => void; build: () => void; staff: () => void; lab: () => void },
 ): void {
   const bar = document.createElement('div');
   bar.className = 'topbar';
@@ -24,6 +25,7 @@ export function mountTopBar(
     </div>
     <div class="topbar__right" role="group" aria-label="Time controls">
       <button type="button" class="btn" data-action="build" title="Build mode (B)">Build</button>
+      <button type="button" class="btn" data-action="lab" title="Lab Warming list and Media Kitchen (L)"><span data-role="ring"></span>Goals <span data-role="goalcount">0/5</span></button>
       <button type="button" class="btn" data-action="staff" title="Staff (T)">Staff</button>
       <button type="button" class="btn" data-action="note" title="Leave a note (F)">Note</button>
       <button type="button" class="btn" data-action="inbox" title="Inbox (I)">Inbox<span class="badge" data-role="badge" hidden>0</span></button>
@@ -46,7 +48,10 @@ export function mountTopBar(
   }));
 
   const badge = q('badge');
-  for (const name of ['build', 'staff', 'note', 'inbox', 'settings'] as const) {
+  const ringEl = q('ring');
+  const goalCount = q('goalcount');
+  let ringLast = '';
+  for (const name of ['build', 'lab', 'staff', 'note', 'inbox', 'settings'] as const) {
     bar.querySelector<HTMLButtonElement>(`button[data-action="${name}"]`)?.addEventListener('click', (e) => {
       (e.currentTarget as HTMLButtonElement).blur();
       actions[name]();
@@ -66,6 +71,13 @@ export function mountTopBar(
     day.textContent = `Day ${s.clock.day}`;
     time.textContent = formatClock(s);
     paused.hidden = s.clock.speed !== 0;
+    const gp = goalProgress(s);
+    const ringKey = `${gp.done}/${gp.total}`;
+    if (ringKey !== ringLast) {
+      ringLast = ringKey;
+      ringEl.innerHTML = ringSvg(gp.done, gp.total, 16);
+      goalCount.textContent = ringKey;
+    }
     const unread = unreadCount(s);
     badge.hidden = unread === 0;
     badge.textContent = String(unread);
@@ -80,6 +92,6 @@ export function mountTopBar(
   refresh();
   setInterval(refresh, 250);
   host.events.on((e) => {
-    if (e.type === 'SpeedChanged' || e.type === 'DayEnded' || e.type === 'EmailReceived') refresh();
+    if (e.type === 'SpeedChanged' || e.type === 'DayEnded' || e.type === 'EmailReceived' || e.type === 'GoalReached') refresh();
   });
 }

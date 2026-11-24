@@ -7,6 +7,8 @@ import { mountEndOfDay } from './ui/endOfDay';
 import { mountBuildPanel } from './ui/buildPanel';
 import { openFeedbackBox } from './ui/feedbackBox';
 import { openInbox } from './ui/inbox';
+import { openLabPanel } from './ui/labPanel';
+import { mountPartyCard } from './ui/partyCard';
 import { mountUiRoot } from './ui/root';
 import { openSettings } from './ui/settings';
 import { openStaffPanel } from './ui/staffPanel';
@@ -45,10 +47,15 @@ void showTitleScreen().then((state) => {
     host.ui.setBuild(false);
     openStaffPanel(uiRoot, host);
   };
+  const openLab = (tab: 'goals' | 'media' = 'goals'): void => {
+    host.ui.setBuild(false);
+    openLabPanel(uiRoot, host, tab);
+  };
+  host.ui.openLab = openLab;
   const toggleBuild = (): void => host.ui.setBuild(!host.ui.build.active);
 
   mountUiRoot(uiRoot, game);
-  mountTopBar(uiRoot, host, { note: openNote, inbox: openMail, settings: openSet, build: toggleBuild, staff: openStaff });
+  mountTopBar(uiRoot, host, { note: openNote, inbox: openMail, settings: openSet, build: toggleBuild, staff: openStaff, lab: () => openLab('goals') });
   mountStockStrip(uiRoot, host);
   mountTodoNote(uiRoot, host);
   mountChips(uiRoot, host);
@@ -57,11 +64,13 @@ void showTitleScreen().then((state) => {
   mountToasts(uiRoot, host);
   mountBuildPanel(uiRoot, host);
   mountEndOfDay(uiRoot, host);
+  mountPartyCard(uiRoot, host, openNote);
   mountStorageBanner(uiRoot);
   host.ui.panelKey = (code) => {
     if (code === 'KeyF') openNote();
     else if (code === 'KeyI') openMail();
     else if (code === 'KeyT') openStaff();
+    else if (code === 'KeyL') openLab('goals');
     else if (code === 'KeyB') toggleBuild();
     else return false;
     return true;

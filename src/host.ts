@@ -34,6 +34,8 @@ export interface UiFlags {
   build: BuildUi;
   /** Turns build mode on or off. Set by the ui. */
   setBuild: (on: boolean) => void;
+  /** Opens the Lab panel on a tab. Set by the ui. */
+  openLab: (tab: 'goals' | 'media') => void;
   /** Opens a panel for a key (F note, I inbox). Returns true if the key was used. */
   panelKey: (code: string) => boolean;
 }
@@ -61,7 +63,7 @@ export function createHost(state: GameState): GameHost {
   const host: GameHost = {
     state,
     events: new Emitter<SimEvent>(),
-    ui: { blocking: 0, pauseHolds: 0, restoreSpeed: null, openMenu: () => undefined, build: freshBuild(), setBuild: () => undefined, panelKey: () => false },
+    ui: { blocking: 0, pauseHolds: 0, restoreSpeed: null, openMenu: () => undefined, build: freshBuild(), setBuild: () => undefined, openLab: () => undefined, panelKey: () => false },
     saving: false,
     send: (cmd) => {
       queue.push(cmd);

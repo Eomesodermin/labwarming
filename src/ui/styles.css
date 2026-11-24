@@ -173,19 +173,25 @@ body {
 /* The sticky note. */
 .todo {
   position: absolute;
-  top: calc(max(30px, calc(var(--u) * 12px)) + max(22px, calc(var(--u) * 10px)));
-  right: max(8px, calc(var(--u) * 4px));
-  width: min(46%, calc(var(--u) * 92px));
+  left: max(8px, calc(var(--u) * 4px));
+  bottom: max(10px, calc(var(--u) * 5px));
+  width: min(40%, calc(var(--u) * 78px));
   box-sizing: border-box;
-  padding: calc(var(--u) * 3px) calc(var(--u) * 4px) calc(var(--u) * 4px);
+  padding: calc(var(--u) * 2px) calc(var(--u) * 3px) calc(var(--u) * 2.5px);
   background: var(--butter);
   border: 1px solid var(--mustard);
   border-radius: 2px;
   box-shadow: calc(var(--u) * 1px) calc(var(--u) * 1.5px) 0 rgba(74, 53, 64, 0.25);
-  transform: rotate(1.2deg);
-  font-size: max(11px, calc(var(--u) * 4.6px));
-  line-height: 1.25;
+  transform: rotate(-1deg);
+  font-size: max(11px, calc(var(--u) * 4.2px));
+  line-height: 1.2;
   pointer-events: none;
+}
+
+.todo__count {
+  font-weight: 400;
+  color: var(--cocoa);
+  margin-left: 0.4em;
 }
 
 .todo__title {
@@ -1239,7 +1245,7 @@ kbd {
 /* Request, grant and inspection chips, under the stock strip on the left. */
 .chips {
   position: absolute;
-  top: calc(max(30px, calc(var(--u) * 12px)) + max(22px, calc(var(--u) * 10px)) + var(--u) * 62px);
+  top: calc(max(30px, calc(var(--u) * 12px)) + max(22px, calc(var(--u) * 10px)) + var(--u) * 2px);
   right: max(8px, calc(var(--u) * 4px));
   width: min(46%, calc(var(--u) * 92px));
   display: flex;
@@ -1384,4 +1390,184 @@ kbd {
 .reqchip--closed {
   background: var(--cream);
   color: var(--cocoa);
+}
+
+/* Goals ring, Lab panel, Media Kitchen. */
+.ring {
+  vertical-align: middle;
+  margin-right: 0.3em;
+}
+
+.goals__head {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  margin-bottom: 0.6em;
+}
+
+.goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5em;
+}
+
+.goal {
+  display: flex;
+  gap: 0.6em;
+  align-items: flex-start;
+}
+
+.goal__text {
+  font-weight: 700;
+}
+
+.goal--done .goal__text {
+  text-decoration: line-through;
+  color: var(--cocoa);
+}
+
+.goal__count,
+.goal__when {
+  font-weight: 400;
+  margin-left: 0.6em;
+  color: var(--cocoa);
+}
+
+.goal__hint {
+  color: var(--cocoa);
+}
+
+.media__row {
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  margin: 0.6em 0;
+  flex-wrap: wrap;
+}
+
+.media__row input[type='range'] {
+  flex: 1;
+  min-width: 8em;
+}
+
+.media__out {
+  font-weight: 700;
+  min-width: 2ch;
+}
+
+/* The party card. */
+.party {
+  position: relative;
+  overflow: hidden;
+}
+
+.party__line {
+  font-weight: 700;
+  margin: 0 0 0.6em;
+}
+
+.confetti {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.confetti i {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 12px;
+  animation: confetti-fall linear infinite;
+}
+
+@keyframes confetti-fall {
+  to {
+    transform: translateY(420px) rotate(540deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti i {
+    animation: none;
+    top: 20px;
+  }
+}
+
+.photo {
+  background: var(--paper);
+  border: 2px solid var(--plum);
+  border-radius: 4px;
+  padding: 0.8em 0.6em 0.5em;
+  margin: 0.6em 0;
+  transform: rotate(-0.6deg);
+}
+
+.photo__row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.6em;
+  flex-wrap: wrap;
+}
+
+.photo__who {
+  display: grid;
+  justify-items: center;
+}
+
+.photo__head {
+  width: 1.4em;
+  height: 1.4em;
+  border-radius: 50%;
+  background: var(--butter);
+  border: 1px solid var(--plum);
+}
+
+.photo__body {
+  width: 2em;
+  height: 2.2em;
+  border-radius: 0.6em 0.6em 0.2em 0.2em;
+  border: 1px solid var(--plum);
+}
+
+.photo__name {
+  font-size: 0.8em;
+  color: var(--cocoa);
+}
+
+.photo__cake {
+  width: 2.4em;
+  height: 1.4em;
+  background: var(--dusty-rose);
+  border: 1px solid var(--plum);
+  border-top: 0.5em solid var(--paper);
+  border-radius: 0.2em;
+}
+
+.photo__caption {
+  text-align: center;
+  font-size: 0.85em;
+  color: var(--cocoa);
+  margin-top: 0.5em;
+}
+
+.party__times {
+  margin-top: 0.4em;
+}
+
+.fb__summary {
+  margin: 0.5em 0;
+  padding: 0.5em 0.7em;
+  background: var(--paper);
+  border: 1px solid var(--stone);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  font: inherit;
+  font-size: 0.9em;
+}
+
+.fb__summary:empty {
+  display: none;
 }

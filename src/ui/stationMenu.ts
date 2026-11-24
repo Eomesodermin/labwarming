@@ -18,9 +18,14 @@ export function mountStationMenu(root: HTMLElement, host: GameHost): void {
   };
 
   const choose = (entry: MenuEntry): void => {
+    if (entry.panel) {
+      close();
+      host.ui.openLab(entry.panel);
+      return;
+    }
     host.send(entry.command);
     // Orders keep the menu open so several boxes can be ordered. Anything else closes it.
-    if (entry.command.type !== 'PlaceOrder') close();
+    if (entry.command.type !== 'PlaceOrder' && entry.command.type !== 'SetAutoReorder') close();
   };
 
   const entriesOf = (m: StationMenu): MenuEntry[] => m.entries;

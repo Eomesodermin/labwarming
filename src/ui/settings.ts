@@ -150,7 +150,9 @@ export function openSettings(root: HTMLElement, host: GameHost, tab: 'game' | 'f
       item.innerHTML = `<div class="fb__meta">Note ${i + 1} &middot; ${n.face ? FACE_WORDS[n.face] : 'no face'} &middot; Day ${n.day} ${esc(n.time)} &middot; ${formatPlayTime(n.playSeconds)} played</div><div class="fb__text">${esc(n.text || '(no text)')}</div>`;
       list.appendChild(item);
     });
-    c.append(actions, msg, list);
+    const summary = el('pre', 'fb__summary');
+    if (notes.length > 0) summary.textContent = buildReport(notes).split('\n').slice(0, 3).join('\n');
+    c.append(actions, msg, summary, list);
   }
 
   show(tab);
