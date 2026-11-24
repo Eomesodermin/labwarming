@@ -1,4 +1,7 @@
-import { SCHEMA_VERSION } from '../../content/balance';
+import { SCHEMA_VERSION, TICKS_PER_DAY } from '../../content/balance';
+import { GRANTS } from '../../content/economy';
+import { SCRIPTED_BEATS, hourToTick } from '../../content/events';
+import { seedToState } from '../rng';
 
 export class SaveError extends Error {
   constructor(message: string) {
@@ -51,6 +54,62 @@ export const MIGRATIONS: readonly Migration[] = [
         }
       }
       if (state['candidates'] === undefined) state['candidates'] = [];
+      return state;
+    },
+  },
+  {
+    // Version 3 to 4 (milestone 6): the event director, grant deadlines, lost boxes and the inspection.
+    // Beats whose time has already passed count as fired, so an old save does not replay its first week.
+    from: 3,
+    run: (state) => {
+      const clock = (state['clock'] ?? {}) as Raw;
+      const day = typeof clock['day'] === 'number' ? clock['day'] : 1;
+      const tod = typeof clock['tickOfDay'] === 'number' ? clock['tickOfDay'] : 0;
+      const seed = typeof state['seed'] === 'number' ? state['seed'] : 1;
+      const past = (d: number, hour: number): boolean => day > d || (day === d && tod >= hourToTick(hour));
+      const fired: string[] = ['pi_welcome'];
+      for (const b of SCRIPTED_BEATS) {
+        if (b.everyDays) {
+          const occ = day >= b.day ? b.day + Math.floor((day - b.day) / b.everyDays) * b.everyDays : b.day;
+          for (let d = b.day; d <= occ; d += b.everyDays) if (past(d, b.hour)) fired.push(`${b.key}@${d}`);
+        } else if (past(b.day, b.hour)) {
+          fired.push(b.key, b.event);
+        }
+      }
+      const grants = (state['grants'] ?? {}) as Raw;
+      const calls: Record<string, Raw> = {};
+      for (const g of GRANTS) {
+        const beat = SCRIPTED_BEATS.find((b) => b.event === 'grant_announce' && b.params?.['grantId'] === g.id);
+        const announced = g.deadlineDay === null || (beat ? past(beat.day, beat.hour) : false);
+        calls[g.id] = { announced, deadlineDay: announced ? g.deadlineDay : null, payPercent: 100, crashes: 0 };
+        // A deadline that has already gone by moves on, as the portal would have done.
+        const call = calls[g.id] as Raw;
+        if (announced && g.deadlineDay !== null && grants[g.id] === undefined && day > g.deadlineDay) call['deadlineDay'] = day;
+      }
+      const t = (day - 1) * TICKS_PER_DAY + tod;
+      state['grantCalls'] = calls;
+      state['lostBoxes'] = [];
+      state['inspection'] = null;
+      state['director'] = {
+        rngState: seedToState((seed ^ 0x2f6e2b1) >>> 0),
+        firedBeats: fired,
+        cooldowns: {},
+        requests: [],
+        resolved: {},
+        queue: [],
+        lastRandomT: t,
+        lastFailureT: -1_000_000,
+        visits: [],
+        cake: null,
+        drill: null,
+        engineerCalls: 0,
+        binsFull: [],
+      };
+      const stats = state['stats'];
+      if (typeof stats === 'object' && stats !== null) {
+        const st = stats as Raw;
+        for (const k of ['contaminations', 'requestsDone', 'requestsMissed', 'inspectionsDone']) if (st[k] === undefined) st[k] = 0;
+      }
       return state;
     },
   },

@@ -11,6 +11,11 @@ function randomLine(state: GameState): string {
   return REVIEWER_RANDOM[nextInt(state, REVIEWER_RANDOM.length)] ?? REVIEWER_RANDOM[0] ?? '';
 }
 
+/** Data the next paper costs. Saying yes to one more panel raises it. */
+export function paperCost(state: GameState): number {
+  return state.flags['onePanel'] === true ? PAPER.panelData : PAPER.data;
+}
+
 export function acceptedPapers(state: GameState): number {
   return state.papers.filter((p) => p.status === 'accepted').length;
 }
@@ -19,14 +24,15 @@ export function acceptedPapers(state: GameState): number {
 function accept(state: GameState, paper: Paper, line: string, events: SimEvent[]): void {
   paper.status = 'accepted';
   state.funds += PAPER.acceptFunds;
-  state.reputation += PAPER.acceptReputation;
+  const rep = paper.panel ? PAPER.panelReputation : PAPER.acceptReputation;
+  state.reputation += rep;
   sendEmail(
     state,
     {
       kind: 'paper_accepted',
       from: REVIEWER_NAME,
       subject: `Paper ${paper.number}: accepted`,
-      body: `${line}\n\nPaper ${paper.number} is accepted. +${PAPER.acceptFunds} Funds, +${PAPER.acceptReputation} Reputation.`,
+      body: `${line}\n\nPaper ${paper.number} is accepted. +${PAPER.acceptFunds} Funds, +${rep} Reputation.`,
     },
     events,
   );
@@ -59,6 +65,10 @@ export function submitPaper(state: GameState): Paper {
     status: 'review',
     reviewTicksLeft: secondsToTicks(PAPER.reviewSec),
   };
+  if (state.flags['onePanel'] === true) {
+    paper.panel = true;
+    state.flags['onePanel'] = false;
+  }
   state.papers.push(paper);
   return paper;
 }

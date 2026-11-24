@@ -16,7 +16,7 @@ import { cleanRoom, dirtyRoom } from './cleanliness';
 import { autoclaveCapacity, startCycle } from './machines';
 import { freeSlots, incubatorWithFreeSlot } from './cultures';
 import { applyForGrant, grantBlocker, openGrant } from './grants';
-import { acceptRevision, submitPaper } from './papers';
+import { acceptRevision, paperCost, submitPaper } from './papers';
 
 const PLAYER = 'player';
 
@@ -25,6 +25,7 @@ export { secondsToTicks };
 /** Seconds a job takes for the player at this station and tier. */
 export function jobSeconds(def: JobDef, eq: Equipment, state?: GameState): number {
   let sec = def.secondsStat ? tierStat(def.station, def.secondsStat, eq.tier, def.seconds) : def.seconds;
+  if (def.id === 'takeOutWaste' && state && state.flags['wasteRulesDay'] === state.clock.day) sec += TUNING.wasteRulesExtraSec;
   if (def.speedStat) {
     let speed = tierStat(def.station, def.speedStat, eq.tier, 1);
     const plotId = plotOf(eq);
@@ -36,7 +37,7 @@ export function jobSeconds(def: JobDef, eq: Equipment, state?: GameState): numbe
 
 /** Stations where E opens a menu instead of starting a job: the desk, and a broken fridge (repair). */
 export function stationHasMenu(eq: Equipment): boolean {
-  return eq.defId === 'desk' || (eq.defId === 'fridge' && eq.broken);
+  return eq.defId === 'desk' || (eq.defId === 'fridge' && eq.broken) || (eq.defId === 'autoclave' && eq.broken);
 }
 
 /** True when the agent stands on a front tile of the station, still, and looks at it. */
@@ -63,6 +64,7 @@ export function jobBlocker(state: GameState, def: JobDef, eq: Equipment, pending
       if (freeSlots(state) <= pending || !incubatorWithFreeSlot(state)) return 'Needs a free incubator slot';
       return null;
     case 'runExperiment':
+      if (eq.outTicks && eq.outTicks > 0) return 'The bench computer is installing updates. 1 of 47';
       if (state.cultures.filter((c) => c.status === 'ready').length <= pending) return 'Needs 1 ready culture';
       if (s.assayKits <= pending) return 'Needs 1 assay kit';
       if (!plotId || binFull(state, plotId)) return 'The waste bin is full. Take it out first';
@@ -93,7 +95,7 @@ export function jobBlocker(state: GameState, def: JobDef, eq: Equipment, pending
       return storageFullReason(state, item);
     }
     case 'writePaper':
-      if (state.data < PAPER.data) return `Needs ${PAPER.data} Data`;
+      if (state.data < paperCost(state)) return `Needs ${paperCost(state)} Data`;
       return null;
     case 'revisePaper':
       if (!state.papers.some((p) => p.status === 'revise')) return 'No paper needs revising';
@@ -104,7 +106,12 @@ export function jobBlocker(state: GameState, def: JobDef, eq: Equipment, pending
       return null;
     case 'writeGrant':
       return grantBlocker(state);
+    case 'signLogbook':
+      if (!state.inspection) return 'No inspection is coming';
+      if (state.inspection.signed) return 'The logbook is signed';
+      return null;
     case 'loadAutoclave':
+      if (eq.broken) return 'Out of service. Coax it or call the engineer';
       if (eq.cycle) return eq.cycle.ticksLeft > 0 ? `Running, ${Math.ceil(eq.cycle.ticksLeft / TICKS_PER_SECOND)} s left` : 'Waiting for room on the shelf';
       if (s.dirtyFlasks < 1) return 'Needs 1 dirty flask';
       return null;
@@ -331,7 +338,7 @@ export function completeJob(state: GameState, job: Job, def: JobDef, eq: Equipme
       break;
     }
     case 'writePaper': {
-      state.data -= PAPER.data;
+      state.data -= paperCost(state);
       const paper = submitPaper(state);
       say(`Paper ${paper.number} sent to review`);
       break;
@@ -354,6 +361,10 @@ export function completeJob(state: GameState, job: Job, def: JobDef, eq: Equipme
       if (grant) applyForGrant(state, grant, events);
       break;
     }
+    case 'signLogbook':
+      if (state.inspection) state.inspection.signed = true;
+      say('Logbook signed');
+      break;
     case 'loadAutoclave': {
       const n = Math.min(autoclaveCapacity(eq), s.dirtyFlasks);
       s.dirtyFlasks -= n;

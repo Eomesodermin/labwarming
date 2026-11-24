@@ -9,6 +9,10 @@ import { PLAYER_ID, type Command } from './commands';
 import { baseTile } from './grid';
 import { coldCapacity, coldUsed, dryCapacity, dryUsed, plotOf, wasteCapacity } from './stock';
 import { atStation, facedStation, startBlocker, stationHasMenu } from './systems/jobs';
+import { openGrant, openGrants } from './systems/grants';
+import { engineerPrice } from './systems/machines';
+import { paperCost } from './systems/papers';
+import { FAILURES, INSPECTION } from '../content/events';
 import { orderBlocker, spendBlocker } from './funds';
 import { HIREABLE_ROLES, ROLES, TRAITS, ENERGY, MOOD, type PortraitColour, type StaffRole, type TraitId } from '../content/staff';
 import { hireBlocker, isOnBreak, roleBlocker, staffAgents } from './systems/staff';
@@ -90,12 +94,15 @@ function stationInfo(state: GameState, eq: Equipment): string | null {
       return parts.join(', ');
     }
     case 'autoclave': {
+      if (eq.broken) return eq.repairTicks && eq.repairTicks > 0 ? `Out of service. Engineer in ${Math.ceil(eq.repairTicks / TICKS_PER_SECOND)} s` : 'Out of service. Coax it or call the engineer';
       if (!eq.cycle) return `Holds ${autoclaveCapacity(eq)} flasks per cycle`;
       if (eq.cycle.ticksLeft > 0) return `${eq.cycle.flasks} flasks, ${Math.ceil(eq.cycle.ticksLeft / TICKS_PER_SECOND)} s left`;
       return `${eq.cycle.flasks} flasks waiting for room on the shelf`;
     }
     case 'fridge':
       return `Cold storage ${coldUsed(state)}/${coldCapacity(state)}${eq.broken ? ' (broken, holds less)' : ''}`;
+    case 'bench':
+      return eq.outTicks && eq.outTicks > 0 ? `Installing updates, ${Math.ceil(eq.outTicks / TICKS_PER_SECOND)} s left` : null;
     case 'shelf':
       return `Dry storage ${dryUsed(state)}/${dryCapacity(state)}`;
     default:
@@ -183,6 +190,19 @@ function jobEntry(state: GameState, eq: Equipment, jobId: keyof typeof JOBS, det
   };
 }
 
+function engineerEntry(state: GameState): MenuEntry {
+  const price = engineerPrice(state);
+  const coming = Object.values(state.equipment).some((e) => e.defId === 'autoclave' && e.repairTicks && e.repairTicks > 0);
+  return {
+    id: 'engineer',
+    group: 'Out of service',
+    label: 'Call the engineer',
+    detail: `${price === 0 ? 'First call is free' : `${price} Funds`}, arrives in ${FAILURES.autoclave.engineerSec} s`,
+    reason: coming ? 'The engineer is on the way' : price > state.funds ? `Needs ${price} Funds` : null,
+    command: { type: 'CallEngineer' },
+  };
+}
+
 /** The menu for a station, or null when E starts a job directly. */
 export function stationMenu(state: GameState, eq: Equipment): StationMenu | null {
   if (!stationHasMenu(eq)) return null;
@@ -202,13 +222,33 @@ export function stationMenu(state: GameState, eq: Equipment): StationMenu | null
       ],
     };
   }
+  if (eq.defId === 'autoclave' && eq.broken) {
+    return {
+      stationId: eq.id,
+      title: 'Autoclave menu',
+      entries: [
+        {
+          id: 'coax',
+          group: 'Out of service',
+          label: 'Coax it',
+          detail: 'Free, works about half the time',
+          reason: eq.repairTicks && eq.repairTicks > 0 ? 'The engineer is on the way' : null,
+          command: { type: 'CoaxAutoclave', equipmentId: eq.id },
+        },
+        engineerEntry(state),
+      ],
+    };
+  }
   if (eq.defId === 'desk') {
+    const grant = openGrant(state) ?? openGrants(state)[0];
     const entries: MenuEntry[] = [
-      jobEntry(state, eq, 'writePaper', `${PAPER.data} Data, ${PAPER.writeSec} s`),
+      jobEntry(state, eq, 'writePaper', `${paperCost(state)} Data, ${PAPER.writeSec} s`),
       jobEntry(state, eq, 'revisePaper', `${PAPER.reviseData} Data, ${PAPER.reviseSec} s`),
       jobEntry(state, eq, 'makePresentation', `${PRESENTATION.data} Data, ${PRESENTATION.sec} s`),
-      jobEntry(state, eq, 'writeGrant', 'Seedling Grant'),
+      jobEntry(state, eq, 'writeGrant', grant ? grant.name : 'No grant is open'),
     ];
+    if (state.inspection) entries.push(jobEntry(state, eq, 'signLogbook', `${INSPECTION.signLogbookSec} s`));
+    if (Object.values(state.equipment).some((e) => e.defId === 'autoclave' && e.broken)) entries.push(engineerEntry(state));
     for (const id of ORDER_IDS) {
       const o = ORDERS[id];
       entries.push({

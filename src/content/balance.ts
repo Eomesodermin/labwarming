@@ -14,7 +14,7 @@ export const STEP_COST = 100;
 export const PLAYER_MOVE_SPEED = 40;
 export const STAFF_MOVE_SPEED = 30;
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const DEFAULT_PLAYER_NAME = 'Postdoc';
 

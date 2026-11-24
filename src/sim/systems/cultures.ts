@@ -4,6 +4,8 @@ import { TRAIT_TUNING } from '../../content/staff';
 import { chance } from '../rng';
 import type { SimEvent } from '../simEvents';
 import { plotOf } from '../stock';
+import { failuresAllowed } from './director';
+import { noteContamination } from './eventCore';
 import type { Equipment, GameState } from '../types';
 
 export function incubators(state: GameState): Equipment[] {
@@ -56,11 +58,12 @@ export function culturesSystem(state: GameState, events: SimEvent[]): void {
     state.stats.culturesGrown += 1;
     const incubator = state.equipment[c.incubatorId];
     const roll = chance(state, contaminationChance(state, incubator, c.golden === true)); // always draws, so the stream stays steady
-    const eligible = state.stats.culturesGrown > TUNING.contamination.safeCultures && state.flags['lastContaminated'] !== true;
+    const eligible = state.stats.culturesGrown > TUNING.contamination.safeCultures && state.flags['lastContaminated'] !== true && failuresAllowed(state);
     if (roll && eligible) {
       c.status = 'contaminated';
       state.flags['lastContaminated'] = true;
       events.push({ type: 'CultureContaminated', cultureId: c.id });
+      noteContamination(state, events);
     } else {
       c.status = 'ready';
       state.flags['lastContaminated'] = false;

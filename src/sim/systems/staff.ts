@@ -2,6 +2,7 @@ import { DAY_END_HOUR, DAY_START_HOUR, TICKS_PER_DAY, TICKS_PER_SECOND } from '.
 import { tierStat } from '../../content/equipment';
 import { JOBS, type JobId } from '../../content/jobs';
 import { ENTRANCE } from '../../content/map';
+import { FIRE_DRILL } from '../../content/events';
 import {
   CANDIDATES_PER_ROLE,
   ENERGY,
@@ -175,6 +176,8 @@ export function computeMood(state: GameState, agent: Agent): number {
   if (state.flags['piRequest'] === true) down += MOOD.piRequest;
   const cake = state.flags['cakeTicks'];
   if (typeof cake === 'number' && cake > 0) up += MOOD.cake;
+  const drill = state.flags['drillMoodTicks'];
+  if (typeof drill === 'number' && drill > 0) up += FIRE_DRILL.moodBonus;
   for (const other of staffAgents(state)) {
     if (other.id === agent.id || !other.staff) continue;
     if (other.staff.trait === 'humsWhilePipetting' && here !== null && roomOf(other) === here) up += TRAIT_TUNING.humMood;
@@ -312,6 +315,7 @@ export function staffAiSystem(state: GameState): void {
   for (const agent of staffAgents(state)) {
     const st = agent.staff;
     if (!st || st.restTicks > 0) continue;
+    if (state.director.drill) continue; // fire alarm test: everyone is outside
     if (agent.jobId && state.jobs[agent.jobId]) continue;
     agent.jobId = null;
     if (st.energy <= ENERGY.breakAt) {
@@ -339,6 +343,7 @@ export function staffWorkSystem(state: GameState, events: SimEvent[]): void {
       }
       continue;
     }
+    if (state.director.drill) continue; // jobs keep their progress while everyone stands outside
     const job = agent.jobId ? state.jobs[agent.jobId] : undefined;
     if (!job) {
       agent.jobId = null;
@@ -388,7 +393,9 @@ export function staffWorkSystem(state: GameState, events: SimEvent[]): void {
 
 /** Mood is recalculated every 10 s. */
 export function needsSystem(state: GameState): void {
-  if (state.tick % (MOOD.everySec * TICKS_PER_SECOND) !== 0) return;
+  const now = state.flags['moodNow'] === true; // cake, pizza and the fire drill ask for an early look
+  if (now) state.flags['moodNow'] = false;
+  if (!now && state.tick % (MOOD.everySec * TICKS_PER_SECOND) !== 0) return;
   for (const agent of staffAgents(state)) if (agent.staff) agent.staff.mood = computeMood(state, agent);
 }
 

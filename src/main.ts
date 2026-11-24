@@ -2,6 +2,7 @@ import { createHost } from './host';
 import { startAutosave } from './platform/autosave';
 import { trackRecentEvents } from './platform/eventLog';
 import { createGame } from './view/game';
+import { mountChips } from './ui/chips';
 import { mountEndOfDay } from './ui/endOfDay';
 import { mountBuildPanel } from './ui/buildPanel';
 import { openFeedbackBox } from './ui/feedbackBox';
@@ -50,6 +51,7 @@ void showTitleScreen().then((state) => {
   mountTopBar(uiRoot, host, { note: openNote, inbox: openMail, settings: openSet, build: toggleBuild, staff: openStaff });
   mountStockStrip(uiRoot, host);
   mountTodoNote(uiRoot, host);
+  mountChips(uiRoot, host);
   mountStationPrompt(uiRoot, host);
   mountStationMenu(uiRoot, host);
   mountToasts(uiRoot, host);

@@ -52,6 +52,10 @@ export interface Equipment {
   broken: boolean;
   /** The autoclave's running cycle, or null when idle. Always null for other equipment. */
   cycle: Cycle | null;
+  /** Ticks left of a software update (a bench is out of use). Missing means 0. */
+  outTicks?: number;
+  /** Ticks until the engineer has fixed a broken autoclave. Missing means nobody is coming. */
+  repairTicks?: number;
 }
 
 export interface Cycle {
@@ -61,7 +65,8 @@ export interface Cycle {
   ticksLeft: number;
 }
 
-export type AgentKind = 'player' | StaffRole;
+/** The player, hired staff, and the visiting characters (Prof. Quince, Inspector Tock, Bodo and guests). */
+export type AgentKind = 'player' | StaffRole | 'pi' | 'inspector' | 'courier' | 'visitor';
 
 /** What only staff have: who they are, and their two needs. */
 export interface StaffData {
@@ -148,6 +153,8 @@ export interface Paper {
   status: PaperStatus;
   /** Ticks left in review. Only counts down while status is 'review'. */
   reviewTicksLeft: number;
+  /** Written after saying yes to "one more panel": it pays +15 Reputation instead of +10. */
+  panel?: boolean;
 }
 
 export interface GrantProgress {
@@ -161,6 +168,22 @@ export interface Order {
   id: string;
   orderId: string;
   ticksLeft: number;
+  /** The courier gets it wrong: the box turns up in the corridor instead of at the bay. */
+  lost?: boolean;
+  /** Where Bodo takes the box. */
+  dropAt?: Point;
+  /** Bodo walks in when `ticksLeft` reaches this. */
+  courierAt?: number;
+  courierSent?: boolean;
+}
+
+/** A box that was delivered to the wrong place. It waits on a corridor tile with a question mark. */
+export interface LostBox {
+  id: string;
+  orderId: string;
+  qty: number;
+  x: number;
+  y: number;
 }
 
 /** A delivered box waiting at the delivery bay. `qty` shrinks if only part of it fits. */
@@ -180,6 +203,10 @@ export interface Email {
   day: number;
   tickOfDay: number;
   read: boolean;
+  /** Answers the player can choose from. Missing for plain emails. */
+  choices?: string[];
+  /** The index of the answer that was chosen. */
+  chosen?: number;
 }
 
 export interface Stats {
@@ -198,6 +225,92 @@ export interface Stats {
   sweetHits: number;
   autoclaveCycles: number;
   plotsBought: number;
+  contaminations: number;
+  requestsDone: number;
+  requestsMissed: number;
+  inspectionsDone: number;
+}
+
+/** One deadline-driven grant call. Seedling is open from the start. The others open on a scripted beat. */
+export interface GrantCall {
+  announced: boolean;
+  /** The day of the current deadline (17:00), or null if the grant has none. The portal crash moves it. */
+  deadlineDay: number | null;
+  /** 100, or 80 after a portal crash. */
+  payPercent: number;
+  crashes: number;
+}
+
+export type RequestStat = 'experiments' | 'splits' | 'presentations';
+
+/** A PI request in progress. Progress is the stat now minus the stat when the request started. */
+export interface ActiveRequest {
+  /** The event row it came from, such as pi_quick_one. */
+  id: string;
+  /** Timeline tick at which it expires (see `timelineTick`). */
+  dueT: number;
+  needs: Array<{ stat: RequestStat; target: number; base: number }>;
+}
+
+export interface QueuedEvent {
+  /** Timeline tick at which it fires. */
+  atT: number;
+  eventId: string;
+  params?: Record<string, string>;
+}
+
+export type VisitKind = 'cake' | 'walkthrough' | 'inspection' | 'courier';
+
+/** A walking character with somewhere to go: stops in order, then out through the entrance. */
+export interface Visit {
+  id: string;
+  kind: VisitKind;
+  /** The first one leads. Others follow the same route. */
+  agentIds: string[];
+  stops: Point[];
+  /** Index of the stop being walked to or stood at. -1 before the first. */
+  stop: number;
+  arrived: boolean;
+  /** Ticks left standing at the current stop. */
+  wait: number;
+  leaving: boolean;
+}
+
+export interface Director {
+  /** The director's own random stream, so other sequences stay the same. */
+  rngState: number;
+  /** Scripted beats that already fired. */
+  firedBeats: string[];
+  /** Event id to the timeline tick before which it may not fire again. */
+  cooldowns: Record<string, number>;
+  requests: ActiveRequest[];
+  /** The last outcome of each request event. */
+  resolved: Record<string, 'done' | 'missed'>;
+  queue: QueuedEvent[];
+  lastRandomT: number;
+  lastFailureT: number;
+  visits: Visit[];
+  /** Where the cake sits while its effect lasts. */
+  cake: Point | null;
+  /** The fire alarm test: staff stand outside until the countdown ends. */
+  drill: { ticksLeft: number } | null;
+  engineerCalls: number;
+  /** Plots whose bin was full on the last check, so the warning email fires once per fill. */
+  binsFull: string[];
+}
+
+export type InspectionCheck = 'logbook' | 'waste' | 'clean' | 'fridge';
+
+export interface InspectionState {
+  phase: 'announced' | 'visiting' | 'done';
+  /** Timeline tick of the visit (11:00 the next day). */
+  visitT: number;
+  signed: boolean;
+  /** Set to false the moment Tock sees a full bin or a dirty room. */
+  wasteOk: boolean;
+  cleanOk: boolean;
+  /** The checks that were missed, once the visit is over. They stay as sticky notes until fixed. */
+  missed: InspectionCheck[];
 }
 
 export interface GameState {
@@ -215,8 +328,13 @@ export interface GameState {
   papers: Paper[];
   presentations: number;
   grants: Record<string, GrantProgress>;
+  /** Announcements and deadlines, by grant id. */
+  grantCalls: Record<string, GrantCall>;
   orders: Order[];
   boxes: Box[];
+  lostBoxes: LostBox[];
+  director: Director;
+  inspection: InspectionState | null;
   inbox: Email[];
   stock: Stock;
   plots: Record<string, Plot>;

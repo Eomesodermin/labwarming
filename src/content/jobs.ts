@@ -1,5 +1,6 @@
 import type { EquipmentDefId } from '../sim/types';
 import { GRANT_WRITE_SEC, PAPER, PRESENTATION } from './economy';
+import { INSPECTION } from './events';
 
 export type JobId =
   | 'splitCells'
@@ -15,7 +16,8 @@ export type JobId =
   | 'makePresentation'
   | 'writeGrant'
   | 'loadAutoclave'
-  | 'coffeeBreak';
+  | 'coffeeBreak'
+  | 'signLogbook';
 
 export interface JobDef {
   id: JobId;
@@ -67,6 +69,7 @@ export const JOBS: Record<JobId, JobDef> = {
     secondsStat: 'loadSec',
     dirties: true,
   },
+  signLogbook: { id: 'signLogbook', name: 'Sign logbook', station: 'desk', seconds: INSPECTION.signLogbookSec, speedStat: 'speed', dirties: false },
   coffeeBreak: { id: 'coffeeBreak', name: 'Coffee break', station: 'coffee', seconds: 20, secondsStat: 'breakSec', dirties: false },
 };
 
@@ -87,6 +90,8 @@ export const TUNING = {
   sweetMedia: 1,
   /** Wash flask: after a hit the next wash takes this fraction of the time. */
   sweetWashNext: 0.5,
+  /** New bin colour memo: taking out waste takes this much longer until the end of that day. */
+  wasteRulesExtraSec: 3,
   /** Tidy up. */
   tidyBelow: 80,
   tidyGain: 40,

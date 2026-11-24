@@ -1,7 +1,9 @@
 import { FRIDGE_REPAIR_COST } from '../content/economy';
 import { ORDERS, isKnownOrder } from '../content/orders';
 import { coldCapacity, coldUsed, dryCapacity, dryUsed, plotOf, wasteCapacity } from './stock';
-import { deliveryTicks } from './systems/orders';
+import { deliveryTicks, rollOrderFailures } from './systems/orders';
+import { callEngineer, coax } from './systems/machines';
+import { chooseOption } from './systems/eventCore';
 import { atStation, facedStation, pressSweetSpot, startJob } from './systems/jobs';
 import { hireStaff, partWays } from './systems/staff';
 import { orderBlocker, spendBlocker } from './funds';
@@ -31,7 +33,10 @@ export type Command =
   | { type: 'SellEquipment'; equipmentId: string }
   | { type: 'UpgradeEquipment'; equipmentId: string }
   | { type: 'HireStaff'; candidateId: string }
-  | { type: 'PartWays'; agentId: string };
+  | { type: 'PartWays'; agentId: string }
+  | { type: 'ChooseEventOption'; emailId: string; option: number }
+  | { type: 'CoaxAutoclave'; equipmentId: string }
+  | { type: 'CallEngineer' };
 
 export const PLAYER_ID = 'player';
 
@@ -132,15 +137,17 @@ function placeOrder(state: GameState, orderId: string, events: SimEvent[]): void
   const why = orderBlocker(state, def.price);
   if (why) return reject(events, why);
   state.funds -= def.price;
-  state.orders.push({ id: `o${state.nextId++}`, orderId, ticksLeft: deliveryTicks() });
+  const order = { id: `o${state.nextId++}`, orderId, ticksLeft: deliveryTicks() };
+  state.orders.push(order);
   state.stats.ordersPlaced += 1;
+  rollOrderFailures(state, order, events);
   events.push({ type: 'Purchase', what: def.name });
   events.push({ type: 'Toast', text: `Ordered: ${def.name}. It arrives in 30 s` });
 }
 
 function repairEquipment(state: GameState, equipmentId: string, events: SimEvent[]): void {
   const eq = state.equipment[equipmentId];
-  if (!eq || !eq.broken) return reject(events, 'Nothing to repair');
+  if (!eq || !eq.broken || eq.defId !== 'fridge') return reject(events, 'Nothing to repair');
   const why = spendBlocker(state, FRIDGE_REPAIR_COST);
   if (why) return reject(events, why);
   state.funds -= FRIDGE_REPAIR_COST;
@@ -297,6 +304,12 @@ export function applyCommand(state: GameState, cmd: Command, events: SimEvent[])
       return hireStaff(state, cmd.candidateId, events);
     case 'PartWays':
       return partWays(state, cmd.agentId, events);
+    case 'ChooseEventOption':
+      return chooseOption(state, cmd.emailId, cmd.option, events);
+    case 'CoaxAutoclave':
+      return coax(state, cmd.equipmentId, events);
+    case 'CallEngineer':
+      return callEngineer(state, events);
     case 'TogglePause':
       return setSpeed(state, state.clock.speed === 0 ? state.clock.resumeSpeed : 0, events);
   }
