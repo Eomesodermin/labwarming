@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CORE_FUNDING, FRIDGE_REPAIR_COST } from '../../src/content/economy';
-import { FRIDGE_WARM } from '../../src/content/events';
+import { DIRECTOR, EVENTS } from '../../src/content/events';
 import { PLAYER_ID } from '../../src/sim/commands';
 import { step } from '../../src/sim/step';
 import { coldCapacity } from '../../src/sim/stock';
@@ -104,10 +104,11 @@ describe('fridge repair', () => {
 });
 
 describe('the warm fridge', () => {
-  it('toasts at 13:00 and costs one media while the fridge is broken, once a day', () => {
+  it('emails at 13:00 and costs one media while the fridge is broken, once a day', () => {
     const s = newGame();
-    const events = run(s, FRIDGE_WARM.tickOfDay + 5);
-    expect(events.filter((e) => e.type === 'Toast' && e.text === FRIDGE_WARM.text)).toHaveLength(1);
+    const events = run(s, DIRECTOR.fridgeWarmTick + 5);
+    expect(events.filter((e) => e.type === 'EmailReceived' && e.kind === 'fail_fridge_warm')).toHaveLength(1);
+    expect(s.inbox.find((m) => m.kind === 'fail_fridge_warm')?.body).toBe(EVENTS['fail_fridge_warm']?.body);
     expect(s.stock.media).toBe(2);
     run(s, 50);
     expect(s.stock.media).toBe(2);
@@ -116,7 +117,7 @@ describe('the warm fridge', () => {
   it('does not happen once the fridge is repaired', () => {
     const s = newGame();
     step(s, [{ type: 'RepairEquipment', equipmentId: equip(s, 'fridge').id }]);
-    run(s, FRIDGE_WARM.tickOfDay + 5);
+    run(s, DIRECTOR.fridgeWarmTick + 5);
     expect(s.stock.media).toBe(3);
   });
 });
@@ -222,7 +223,7 @@ describe('the Seedling Grant', () => {
     expect(s.grants['seedling']?.status).toBe('awarded');
     expect(s.funds).toBe(1700);
     expect(s.reputation).toBe(5);
-    expect(s.inbox.some((m) => m.kind === 'grant_award_seedling')).toBe(true);
+    expect(s.inbox.some((m) => m.kind === 'grant_award')).toBe(true);
   });
 
   it('cannot be applied for twice', () => {

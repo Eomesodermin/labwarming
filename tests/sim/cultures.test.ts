@@ -5,6 +5,7 @@ import type { SimEvent } from '../../src/sim/simEvents';
 import { equip, newGame } from './helpers';
 
 function growOne(state: ReturnType<typeof newGame>): 'ready' | 'contaminated' {
+  state.tick = Math.max(state.tick, 100_000); // contamination waits for the first 6 minutes to pass
   const inc = equip(state, 'incubator');
   state.cultures.push({ id: `c${state.nextId++}`, incubatorId: inc.id, growTicksLeft: 1, status: 'growing' });
   const events: SimEvent[] = [];
@@ -66,6 +67,7 @@ describe('contamination', () => {
     const plot = s.plots['a'];
     if (plot) plot.cleanliness = 0;
     const inc = equip(s, 'incubator');
+    s.tick = 100_000;
     const seen = new Set<string>();
     for (let i = 0; i < 300; i++) {
       s.cultures.push({ id: `c${i}`, incubatorId: inc.id, growTicksLeft: 1, status: 'growing' });

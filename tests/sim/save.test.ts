@@ -210,3 +210,70 @@ describe('migration from version 2 (milestone 4 saves)', () => {
 function staffNames(s: ReturnType<typeof newGame>): string[] {
   return Object.values(s.agents).flatMap((a) => (a.staff ? [a.staff.name] : []));
 }
+
+describe('migration from version 3 (milestone 5 saves)', () => {
+  /** A milestone 5 save: schema 3, none of the milestone 6 fields. */
+  function m5Save(day = 1, tickOfDay = 0): Record<string, unknown> {
+    const raw = JSON.parse(serialize(newGame(11))) as Record<string, unknown>;
+    raw['schemaVersion'] = 3;
+    for (const k of ['director', 'grantCalls', 'lostBoxes', 'inspection']) delete raw[k];
+    const stats = raw['stats'] as Record<string, unknown>;
+    for (const k of ['contaminations', 'requestsDone', 'requestsMissed', 'inspectionsDone']) delete stats[k];
+    (raw['clock'] as Record<string, unknown>)['day'] = day;
+    (raw['clock'] as Record<string, unknown>)['tickOfDay'] = tickOfDay;
+    return raw;
+  }
+
+  it('is rejected by validation before migrating and accepted after', () => {
+    expect(() => validateState(m5Save())).toThrow();
+    const loaded = restoreState(m5Save(), 3);
+    expect(loaded.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(SCHEMA_VERSION).toBe(4);
+    expect(loaded.inspection).toBeNull();
+    expect(loaded.lostBoxes).toEqual([]);
+    expect(loaded.director.requests).toEqual([]);
+    expect(loaded.stats.requestsDone).toBe(0);
+  });
+
+  it('gives back the same game as a new one with the same seed, for a save from the first minute', () => {
+    expect(deserialize(JSON.stringify(m5Save()))).toEqual(newGame(11));
+  });
+
+  it('opens Seedling only, and keeps later grants closed for an early save', () => {
+    const loaded = deserialize(JSON.stringify(m5Save(2, 100)));
+    expect(loaded.grantCalls['seedling']?.announced).toBe(true);
+    expect(loaded.grantCalls['equipment']).toMatchObject({ announced: false, deadlineDay: null });
+    expect(loaded.grantCalls['foundation']?.announced).toBe(false);
+  });
+
+  it('does not replay the first week for a later save: past beats count as fired and past grants are open', () => {
+    const raw = m5Save(6, 1000);
+    (raw['grants'] as Record<string, unknown>)['equipment'] = { status: 'awarded', decisionTicksLeft: 0 };
+    const loaded = deserialize(JSON.stringify(raw));
+    expect(loaded.director.firedBeats).toContain('pi_quick_one');
+    expect(loaded.director.firedBeats).toContain('fail_contamination');
+    expect(loaded.director.firedBeats).toContain('insp_notice@5');
+    expect(loaded.director.firedBeats).toContain('grant_announce_foundation');
+    expect(loaded.director.firedBeats).not.toContain('pi_slides_tonight');
+    expect(loaded.grantCalls['equipment']).toMatchObject({ announced: true, deadlineDay: 5 });
+    expect(loaded.grantCalls['foundation']).toMatchObject({ announced: true, deadlineDay: 10 });
+    const before = loaded.inbox.length;
+    run(loaded, 40);
+    expect(loaded.inbox.length).toBe(before);
+  });
+
+  it('loads, plays on, and saves again as a version 4 save', () => {
+    const loaded = deserialize(JSON.stringify(m5Save(3, 200)));
+    run(loaded, 500);
+    expect(loaded.grantCalls['equipment']?.announced).toBe(true); // the Day 3, 09:00 beat plays as normal
+    const again = deserialize(serialize(loaded));
+    expect(again).toEqual(loaded);
+    expect(again.schemaVersion).toBe(4);
+  });
+
+  it('rejects a damaged director', () => {
+    const raw = JSON.parse(serialize(newGame())) as Record<string, unknown>;
+    expect(() => validateState({ ...raw, director: { rngState: 1 } })).toThrow(/director/);
+    expect(() => validateState({ ...raw, grantCalls: { x: { announced: 'yes' } } })).toThrow(/grant call/);
+  });
+});

@@ -1,3 +1,4 @@
+import { SCRIPTED_BEATS } from '../../src/content/events';
 import { PLAYER_ID, type Command } from '../../src/sim/commands';
 import { createInitialState } from '../../src/sim/createState';
 import { ROT_FACING, frontTiles, opposite } from '../../src/sim/grid';
@@ -49,3 +50,27 @@ export function doJob(state: GameState, defId: string, jobId?: string): SimEvent
 
 export const rejections = (ev: SimEvent[]): string[] =>
   ev.flatMap((e) => (e.type === 'CommandRejected' ? [e.reason] : []));
+
+/** Jumps the clock to a day and an hour (08:00 to 18:00), a few ticks before it. */
+export function setClock(state: GameState, day: number, hour: number, minusTicks = 0): void {
+  state.clock.day = day;
+  state.clock.tickOfDay = Math.round(((hour - 8) * 2400) / 10) - minusTicks;
+}
+
+export const mails = (state: GameState, kind: string): GameState['inbox'] => state.inbox.filter((m) => m.kind === kind);
+
+/** A game far enough along that random failures are allowed. */
+export function lateGame(seed = 1): GameState {
+  const s = newGame(seed);
+  s.tick = 100_000;
+  return s;
+}
+
+/** Marks every scripted beat as fired, except the ones named, so a test can jump around in time. */
+export function markFired(state: GameState, except: string[] = []): void {
+  for (const b of SCRIPTED_BEATS) {
+    if (except.includes(b.key)) continue;
+    if (!state.director.firedBeats.includes(b.key)) state.director.firedBeats.push(b.key);
+    if (!state.director.firedBeats.includes(b.event)) state.director.firedBeats.push(b.event);
+  }
+}

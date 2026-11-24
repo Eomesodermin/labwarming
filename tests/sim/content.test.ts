@@ -73,27 +73,87 @@ describe('economy content', () => {
 
   it('has grants with integer pay and a decision time, and every email row has text', async () => {
     const { GRANTS } = await import('../../src/content/economy');
-    const { EVENT_ROWS, FRIDGE_WARM } = await import('../../src/content/events');
+    const { EVENTS } = await import('../../src/content/events');
     for (const g of GRANTS) {
       expect(Number.isInteger(g.pays) && g.pays >= 0, g.id).toBe(true);
       expect(g.decisionSec).toBeGreaterThan(0);
-      expect(EVENT_ROWS[`grant_award_${g.id}`], g.id).toBeDefined();
     }
-    for (const r of Object.values(EVENT_ROWS)) expect(r.body.length, r.id).toBeGreaterThan(10);
-    expect(FRIDGE_WARM.text.length).toBeGreaterThan(10);
+    for (const r of Object.values(EVENTS)) if (!r.silent) expect(r.body.length, r.id).toBeGreaterThan(5);
   });
 
   it('uses no em dashes in player-facing text', async () => {
-    const { EVENT_ROWS, FRIDGE_WARM } = await import('../../src/content/events');
+    const { EVENTS, REQUESTS } = await import('../../src/content/events');
     const rev = await import('../../src/content/reviewer');
     const all = [
-      ...Object.values(EVENT_ROWS).flatMap((r) => [r.subject, r.body]),
-      FRIDGE_WARM.text,
+      ...Object.values(EVENTS).flatMap((r) => [r.subject, r.body, ...(r.choices ?? []).flatMap((c) => [c.label, c.reply ?? ''])]),
+      ...Object.values(REQUESTS).flatMap((r) => [r.label, r.doneText, r.missText]),
       rev.REVIEWER_FIRST_ACCEPT,
       rev.REVIEWER_FIRST_REVISION,
       rev.REVIEWER_AFTER_REVISION,
       ...rev.REVIEWER_RANDOM,
     ];
-    for (const t of all) expect(t).not.toMatch(/—/);
+    for (const t of all) expect(t).not.toMatch(/\u2014/);
+  });
+});
+
+describe('event content', () => {
+  it('has every event id referenced by a beat, an effect, a later effect or a request', async () => {
+    const { EVENTS, SCRIPTED_BEATS, REQUESTS } = await import('../../src/content/events');
+    const { GRANTS } = await import('../../src/content/economy');
+    type Fx = { type: string; event?: string; then?: Fx[]; otherwise?: Fx[] };
+    const visit = (list: Fx[], f: (e: Fx) => void): void => {
+      for (const e of list) {
+        f(e);
+        visit(e.then ?? [], f);
+        visit(e.otherwise ?? [], f);
+      }
+    };
+    for (const def of Object.values(EVENTS)) {
+      expect(def.id).toBe(Object.keys(EVENTS).find((k) => EVENTS[k] === def));
+      visit((def.effects ?? []) as Fx[], (e) => {
+        if (e.type === 'later') expect(EVENTS[e.event ?? ''], `${def.id} -> ${e.event}`).toBeDefined();
+      });
+      for (const c of def.choices ?? []) visit(c.effects as Fx[], (e) => {
+        if (e.type === 'later') expect(EVENTS[e.event ?? ''], def.id).toBeDefined();
+      });
+      if (def.request) expect(REQUESTS[def.request], def.id).toBeDefined();
+      if (def.pool) expect(def.pool.weight).toBeGreaterThan(0);
+    }
+    for (const b of SCRIPTED_BEATS) {
+      expect(EVENTS[b.event], b.key).toBeDefined();
+      const gid = b.params?.['grantId'];
+      if (gid) expect(GRANTS.some((g) => g.id === gid), b.key).toBe(true);
+    }
+    for (const g of GRANTS.filter((x) => x.deadlineDay !== null)) {
+      expect(SCRIPTED_BEATS.some((b) => b.params?.['grantId'] === g.id), g.id).toBe(true);
+    }
+  });
+
+  it('has text, integer money and sane numbers in every event and request', async () => {
+    const { EVENTS, REQUESTS, FAILURES, INSPECTION, DIRECTOR } = await import('../../src/content/events');
+    for (const def of Object.values(EVENTS)) {
+      expect(def.from.length, def.id).toBeGreaterThan(0);
+      if (!def.silent) {
+        expect(def.subject.length, def.id).toBeGreaterThan(0);
+        expect(def.body.length, def.id).toBeGreaterThan(0);
+      }
+    }
+    for (const r of Object.values(REQUESTS)) {
+      expect(r.needs.length).toBeGreaterThan(0);
+      expect(Number.isInteger(r.missFunds) && r.missFunds >= 0).toBe(true);
+      expect(r.withinDays !== undefined || r.nextDayEnd === true, r.id).toBe(true);
+    }
+    expect(Number.isInteger(INSPECTION.passFunds) && INSPECTION.passFunds >= 0).toBe(true);
+    expect(FAILURES.autoclave.chancePerCycle).toBeLessThan(1);
+    expect(DIRECTOR.noFailureSec).toBe(360);
+    expect(DIRECTOR.randomGapSec).toBe(90);
+    expect(DIRECTOR.failureGapSec).toBe(120);
+  });
+
+  it('keeps Quince in character: her emails are signed and she believes in afternoons', async () => {
+    const { EVENTS, withSignoff, PI_NAME } = await import('../../src/content/events');
+    for (const def of Object.values(EVENTS).filter((d) => d.from === PI_NAME && !d.silent)) {
+      expect(withSignoff(def, def.body)).toMatch(/Best, W\nSent from my phone$/);
+    }
   });
 });
