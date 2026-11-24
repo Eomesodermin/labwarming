@@ -1,0 +1,81 @@
+import { DEFAULT_PLAYER_NAME, SCHEMA_VERSION } from '../content/balance';
+import { FACILITY } from '../content/facility';
+import { STARTING_FUNDS, STARTING_REPUTATION } from '../content/economy';
+import { START_STOCK } from '../content/items';
+import { PLAYER_START, PLOTS, START_EQUIPMENT, START_PLOT } from '../content/map';
+import { PLAYER_ID } from './commands';
+import { fireEvent, newDirector, newGrantCalls } from './systems/eventCore';
+import { seedToState } from './rng';
+import { makeCandidates } from './systems/staff';
+import type { Equipment, FacilityState, GameState, Plot } from './types';
+
+export function newFacility(): FacilityState {
+  return { target: FACILITY.targetDefault, autoReorder: FACILITY.autoReorderDefault, batchLeft: 0, visitorTicks: -1, earned: 0 };
+}
+
+export function createInitialState(seed: number): GameState {
+  const plots: Record<string, Plot> = {};
+  for (const p of PLOTS) {
+    const start = p.id === START_PLOT;
+    plots[p.id] = { id: p.id, owned: start, roomType: start ? 'lab' : null, cleanliness: 100, waste: 0 };
+  }
+
+  const state: GameState = {
+    schemaVersion: SCHEMA_VERSION,
+    seed,
+    rngState: seedToState(seed),
+    tick: 0,
+    clock: { day: 1, tickOfDay: 0, speed: 1, resumeSpeed: 1 },
+    playerName: DEFAULT_PLAYER_NAME,
+    funds: STARTING_FUNDS,
+    data: 0,
+    reputation: STARTING_REPUTATION,
+    papers: [],
+    presentations: 0,
+    grants: {},
+    grantCalls: newGrantCalls(),
+    orders: [],
+    boxes: [],
+    lostBoxes: [],
+    director: newDirector(seed),
+    inspection: null,
+    facility: newFacility(),
+    goals: { reached: {}, partyDone: false, prompted: [] },
+    inbox: [],
+    stock: { ...START_STOCK },
+    plots,
+    equipment: {},
+    jobs: {},
+    cultures: [],
+    candidates: [],
+    stats: { ordersPlaced: 0, papersWritten: 0, presentations: 0, boxesPutAway: 0, splits: 0, culturesGrown: 0, experiments: 0, washes: 0, mediaMade: 0, wasteTaken: 0, tidies: 0, binned: 0, sweetHits: 0, autoclaveCycles: 0, plotsBought: 0, contaminations: 0, requestsDone: 0, requestsMissed: 0, inspectionsDone: 0, hires: 0, prepBottles: 0, mediaSold: 0, visitorsServed: 0 },
+    agents: {
+      [PLAYER_ID]: {
+        id: PLAYER_ID,
+        kind: 'player',
+        x: PLAYER_START.x,
+        y: PLAYER_START.y,
+        facing: PLAYER_START.facing,
+        path: [],
+        moveProgress: 0,
+        arriveFacing: null,
+        jobId: null,
+        pendingStation: null,
+        staff: null,
+      },
+    },
+    gridVersion: 1,
+    flags: {},
+    nextId: 1,
+  };
+
+  for (const e of START_EQUIPMENT) {
+    const id = `eq${state.nextId++}`;
+    const eq: Equipment = { id, defId: e.defId, tier: e.tier, x: e.x, y: e.y, rot: e.rot, broken: e.broken === true, cycle: null };
+    state.equipment[id] = eq;
+  }
+  state.candidates = makeCandidates(state);
+  state.director.firedBeats.push('pi_welcome');
+  fireEvent(state, 'pi_welcome', []);
+  return state;
+}
